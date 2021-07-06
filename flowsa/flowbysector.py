@@ -305,6 +305,8 @@ def main(**kwargs):
     # prior to aggregating, replace MetaSources string with all sources
     # that share context/flowable/sector values
     fbss = harmonize_FBS_columns(fbss)
+    # all year values should be the same prior to aggregating
+    fbss['Year'] = method['target_year']
     # aggregate df as activities might have data for the same specified sector length
     fbss = aggregator(fbss, fbs_default_grouping_fields)
     # sort df
