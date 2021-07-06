@@ -1,6 +1,7 @@
 target_sector_level: NAICS_6
 target_sector_source: NAICS_2012_Code
 target_geoscale: national
+target_year: 2017
 source_names:
   "EPA_NEI_Nonpoint":
     data_format: 'FBA'
