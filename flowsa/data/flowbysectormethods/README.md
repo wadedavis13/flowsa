@@ -8,6 +8,7 @@ Description of parameters in flowbysectormethods yamls. All values are strings u
 2. _target_sector_source_: specify NAICS version 2007, 2012, 2017 (ex. NAICS_2012_Code).
    Recommend NAICS_2012_Code, as the majority of datasets use this version of NAICS
 3. _target_geoscale_: level of geographic aggregation in output parquet (national, state, or county)
+4. _target_year_: target year of fbs. All data will display as this year with data quality adjusted accordingly
 
 ### Source specifications (in FBA or FBS format)
 1. _source_names_: The name of the FBS dataset or the FBA dataset requiring allocation to sectors
