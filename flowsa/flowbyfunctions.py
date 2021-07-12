@@ -8,6 +8,8 @@ Helper functions for flowbyactivity and flowbysector data
 import os
 import pandas as pd
 import numpy as np
+
+from esupy.dqi import adjust_dqi_scores
 from flowsa.common import fbs_activity_fields, US_FIPS, get_state_FIPS, \
     get_county_FIPS, update_geoscale, log, load_source_catalog, \
     load_sector_length_crosswalk, flow_by_sector_fields, fbs_fill_na_dict, \
@@ -886,3 +888,14 @@ def dynamically_import_fxn(data_source_scripts_file, function_name):
     df = getattr(__import__(f"{'flowsa.data_source_scripts.'}{data_source_scripts_file}",
                             fromlist=function_name), function_name)
     return df
+
+def apply_target_year(fbs, target_year):
+    """
+    :param fbs: df of flowbysector
+    :target_year: int of target_year for fbs
+    :return: df of flowbysector with target year adjustment
+    """
+    target_year_adj_series = abs(fbs['Year'] - target_year)
+    adjust_dqi_scores(fbs, target_year_adj_series, 'TemporalCorrelation')
+    fbs['Year'] = target_year
+    return fbs
