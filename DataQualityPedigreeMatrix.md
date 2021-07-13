@@ -2,7 +2,7 @@
 
 The following table is an update of
 'Table 3 Updated Data Quality Pedigree Matrix - Flow Indicators' from [USEPA 2016 'Guidance on Data Quality Assessment for Life Cycle Inventory Data'](https://cfpub.epa.gov/si/si_public_record_report.cfm?Lab=NRMRL&dirEntryId=321834)
-for application to FLOWSA. Discussion of data quality application across packages can be found in [esupy](https://github.com/USEPA/esupy/blob/main/DataQualityPedigreeMatrix.md).
+for application to FLOWSA. Discussion of generic data quality applications across packages can be found in [esupy](https://github.com/USEPA/esupy/blob/main/DataQualityPedigreeMatrix.md).
 
 Indicator | 1 | 2 | 3 | 4 | 5 | Applies to |
 ---|---|---|---|---|---|---|
@@ -18,6 +18,7 @@ DataCollection | >= 80% of product represented or % of establishments of activit
 2. Allocation of amount data with data representing another flow results in a 1 point quality deduction for TechnologicalCorrelation.
 3. Lack of certainty over whether an activity represents a commodity or an industry results in a 1 point quality deduction for TechnologicalCorrelation.
 4. For DataCollection, percentage of production value, mass or activity is preferred over number of establishments.
+5. When records are aggregated, a flow-weighted average of data quality scores is calculated.
 
 ## Notes
 
