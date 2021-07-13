@@ -1,7 +1,7 @@
 # Data Quality Pedigree Mattix
 
 The following table is an update of
-'Table 3 Updated Data Quality Pedigree Matrix – Flow Indicators' from [USEPA 2016 'Guidance on Data Quality Assessment for Life Cycle Inventory Data'](https://cfpub.epa.gov/si/si_public_record_report.cfm?Lab=NRMRL&dirEntryId=321834)
+'Table 3 Updated Data Quality Pedigree Matrix - Flow Indicators' from [USEPA 2016 'Guidance on Data Quality Assessment for Life Cycle Inventory Data'](https://cfpub.epa.gov/si/si_public_record_report.cfm?Lab=NRMRL&dirEntryId=321834)
 for application to FLOWSA. Discussion of data quality application across packages can be found in [esupy](https://github.com/USEPA/esupy/blob/main/DataQualityPedigreeMatrix.md).
 
 Indicator | 1 | 2 | 3 | 4 | 5 | Applies to |
