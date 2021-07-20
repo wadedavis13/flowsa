@@ -10,7 +10,6 @@ import logging as log
 import numpy as np
 import pandas as pd
 import flowsa
-from esupy.dqi import apply_dqi_to_field, apply_dqi_to_series
 
 from flowsa.common import load_source_catalog, activity_fields, US_FIPS, \
     fba_activity_fields, fbs_activity_fields, \
@@ -48,8 +47,6 @@ def direct_allocation_method(flow_subset_mapped, k, names, method):
             fbs_subset = check_if_losing_sector_data(fbs_subset, method['target_sector_level'])
             activity_list.append(fbs_subset)
         fbs = pd.concat(activity_list, ignore_index=True)
-    # on direct allocation, Temporal Correlation is set to 1
-    fbs['TemporalCorrelation'] = 1
     return fbs
 
 
@@ -66,14 +63,6 @@ def function_allocation_method(flow_subset_mapped, k, names, attr, fbs_list):
     log.info('Calling on function specified in method yaml to allocate ' +
              ', '.join(map(str, names)) + ' to sectors')
     fbs = dynamically_import_fxn(k, attr['allocation_source'])(flow_subset_mapped, attr, fbs_list)
-    
-    # Assign temporal correlation by comparing data year to the literature sources
-    # used, use the greatest gap (results in lower scores)
-    fbs['TemporalCorrelation'] = apply_dqi_to_series(
-        np.maximum(abs(fbs['Year'] - int(max(attr['literature_sources'].values()))),
-                   abs(fbs['Year']- int(min(attr['literature_sources'].values())))),
-        'TemporalCorrelation')
-    
     return fbs
 
 
@@ -120,10 +109,6 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     if attr['allocation_helper'] == 'yes':
         log.info("Using the specified allocation help for subset of " + attr['allocation_source'])
         fba_allocation_subset = allocation_helper(fba_allocation_subset, attr, method, v)
-        helper_allocation_year_diff = abs(attr['allocation_source_year'] -\
-                                          attr['helper_source_year'])
-    else:
-        helper_allocation_year_diff = 0
 
     # create flow allocation ratios for each activity
     # if load_source_catalog()[k]['sector-like_activities']
@@ -183,11 +168,6 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     # drop rows where there is no allocation data
     fbs = flow_subset_mapped.dropna(subset=['Sector_x', 'Sector_y'], how='all').reset_index()
 
-    # apply temporal correlation by comparing allocation_year to data year
-    fbs['Year_diff'] = abs(fbs['Year']- attr['allocation_source_year']) +\
-        helper_allocation_year_diff
-    fbs = apply_dqi_to_field(fbs, 'Year_diff', 'TemporalCorrelation')
-
     # calculate flow amounts for each sector
     log.info("Calculating new flow amounts using flow ratios")
     fbs.loc[:, 'FlowAmount'] = fbs['FlowAmount'] * fbs['FlowAmountRatio']
@@ -195,8 +175,7 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     # drop columns
     log.info("Cleaning up new flow by sector")
     fbs = fbs.drop(columns=['Sector_x', 'FlowAmountRatio_x', 'Sector_y', 'FlowAmountRatio_y',
-                            'FlowAmountRatio', 'FBA_Activity_x', 'FBA_Activity_y',
-                            'Year_diff'])
+                            'FlowAmountRatio', 'FBA_Activity_x', 'FBA_Activity_y'])
     return fbs
 
 

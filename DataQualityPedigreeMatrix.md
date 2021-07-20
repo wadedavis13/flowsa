@@ -7,7 +7,7 @@ for application to FLOWSA. Discussion of generic data quality applications acros
 Indicator | 1 | 2 | 3 | 4 | 5 | Applies to |
 ---|---|---|---|---|---|---|
 DataReliability | Verified data based on measurements | Verified data based on a calculation OR non-verified data based on measurements | Non-verified data based on a calculation | Documented estimate | Undocumented estimate | [FlowByActivity](format%20specs/FlowByActivity.md), [FlowBySector](format%20specs/FlowBySector.md)
-TemporalCorrelation | Less than 3 years of difference | Less than 6 years of difference | Less than 10 years of difference | Less than 15 years of difference | Age of data unknown or more than 15 years | [FlowBySector](format%20specs/FlowBySector.md)
+TemporalCorrelation | Less than 3 years of difference between source data year and target year | Less than 6 years of difference | Less than 10 years of difference | Less than 15 years of difference | Age of data unknown or more than 15 years | [FlowBySector](format%20specs/FlowBySector.md)
 GeographicalCorrelation | Data represent same FIPS code and level or higher resolution  | Data represent different FIPS code within the same level or 1 level lower resolution | Data represent different FIPS code and off two levels or 2 levels lower resolution |  Data represent different FIPS code within the same level or 3 levels lower resolution | Data geography just a proxy or unknown | [FlowBySector](format%20specs/FlowBySector.md) |
 TechnologicalCorrelation | Data represent same NAICS sector and level or higher resolution | Data have last 1 NAICSs sector difference  or 1 level lower resolution | Data have last 2 NAICS sector difference or 2 levels lower resolution | Data represent last 3 NAICS sectors off or 3 levels lower resolution  | Data represent last 4 NAICS sectors off or 4 levels lower resolution or data applied across all technologies | [FlowBySector](format%20specs/FlowBySector.md) |
 DataCollection | >= 80% of product represented or % of establishments of activities reporting | 60 <= x <= 80% of of product represented or % establishments or activities reporting | 40% >= x >= 60% of product represented or % of establishments or activities reporting | <= 40% of product represented or % of establishments or activities reporting | unknown percentage of establishments or activities reporting | [FlowByActivity](format%20specs/FlowByActivity.md), [FlowBySector](format%20specs/FlowBySector.md)
@@ -17,8 +17,9 @@ DataCollection | >= 80% of product represented or % of establishments of activit
 1. Data can represent the original raw daw or the data used for sector allocation.  
 2. Allocation of amount data with data representing another flow results in a 1 point quality deduction for TechnologicalCorrelation.
 3. Lack of certainty over whether an activity represents a commodity or an industry results in a 1 point quality deduction for TechnologicalCorrelation.
-4. For DataCollection, percentage of production value, mass or activity is preferred over number of establishments.
-5. When records are aggregated, a flow-weighted average of data quality scores is calculated.
+4. For TemporalCorrelation, year of allocation dataset is not considered, only the source data year and target year.
+5. For DataCollection, percentage of production value, mass or activity is preferred over number of establishments.
+6. When records are aggregated, a flow-weighted average of data quality scores is calculated.
 
 ## Notes
 
