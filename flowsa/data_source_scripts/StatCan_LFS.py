@@ -1,33 +1,30 @@
 # Stat_Canada.py (flowsa)
 # !/usr/bin/env python3
 # coding=utf-8
-'''
 
+"""
 Labour force characteristics by industry, annual (x 1,000)
-How to cite: Statistics Canada. Table 14-10-0023-01 Labour force characteristics by industry, annual (x 1,000)
+How to cite: Statistics Canada. Table 14-10-0023-01 Labour
+force characteristics by industry, annual (x 1,000)
 DOI: https://doi.org/10.25318/1410002301-eng
-'''
+"""
 
-import pandas as pd
 import io
 import zipfile
 import pycountry
-from flowsa.common import *
+import pandas as pd
+from flowsa.common import WITHDRAWN_KEYWORD
 
 
-def sc_lfs_call(**kwargs):
+def sc_lfs_call(url, response_load, args):
     """
     Convert response for calling url to pandas dataframe, begin parsing df into FBA format
-    :param kwargs: potential arguments include:
-                   url: string, url
-                   response_load: df, response from url call
-                   args: dictionary, arguments specified when running
-                   flowbyactivity.py ('year' and 'source')
+    :param kwargs: url: string, url
+    :param kwargs: response_load: df, response from url call
+    :param kwargs: args: dictionary, arguments specified when running
+        flowbyactivity.py ('year' and 'source')
     :return: pandas dataframe of original source data
     """
-    # load arguments necessary for function
-    response_load = kwargs['r']
-
     # Convert response to dataframe
     # read all files in the stat canada zip
     with zipfile.ZipFile(io.BytesIO(response_load.content), "r") as f:
@@ -40,21 +37,18 @@ def sc_lfs_call(**kwargs):
     return df
 
 
-def sc_lfs_parse(**kwargs):
+def sc_lfs_parse(dataframe_list, args):
     """
     Combine, parse, and format the provided dataframes
-    :param kwargs: potential arguments include:
-                   dataframe_list: list of dataframes to concat and format
-                   args: dictionary, used to run flowbyactivity.py ('year' and 'source')
+    :param dataframe_list: list of dataframes to concat and format
+    :param args: dictionary, used to run flowbyactivity.py ('year' and 'source')
     :return: df, parsed and partially formatted to flowbyactivity specifications
     """
-    # load arguments necessary for function
-    dataframe_list = kwargs['dataframe_list']
-
     # concat dataframes
     df = pd.concat(dataframe_list, sort=False)
     # drop columns
-    df = df.drop(columns=['COORDINATE', 'DECIMALS', 'DGUID', 'SYMBOL', 'TERMINATED', 'UOM_ID', 'SCALAR_ID', 'VECTOR'])
+    df = df.drop(columns=['COORDINATE', 'DECIMALS', 'DGUID', 'SYMBOL',
+                          'TERMINATED', 'UOM_ID', 'SCALAR_ID', 'VECTOR'])
     # rename columns
     df = df.rename(columns={'GEO': 'Location',
                             'North American Industry Classification System (NAICS)': 'Description',
@@ -76,7 +70,8 @@ def sc_lfs_parse(**kwargs):
     df.loc[df['Description'] == 'Other manufacturing industries', 'Activity'] = 'Other'
     df['FlowName'] = df['FlowName'].str.strip()
     df.loc[df['FlowName'] == 'Water intake', 'ActivityConsumedBy'] = df['Activity']
-    df.loc[df['FlowName'].isin(['Water discharge', "Water recirculation"]), 'ActivityProducedBy'] = df['Activity']
+    df.loc[df['FlowName'].isin(['Water discharge', "Water recirculation"]),
+           'ActivityProducedBy'] = df['Activity']
     # drop columns used to create unit and activity columns
     df = df.drop(columns=['Activity'])
     # Modify the assigned RSD letter values to numeric value
@@ -86,7 +81,7 @@ def sc_lfs_parse(**kwargs):
     df.loc[df['Spread'] == 'D', 'Spread'] = 20  # given range: 15 - 24.99%
     df.loc[df['Spread'] == 'E', 'Spread'] = 37.5  # given range:25 - 49.99%
     df.loc[df['Spread'] == 'F', 'Spread'] = 75  # given range: > 49.99%
-    df.loc[df['Spread'] == 'x', 'Spread'] = withdrawn_keyword
+    df.loc[df['Spread'] == 'x', 'Spread'] = WITHDRAWN_KEYWORD
     # hard code data
     df['Class'] = 'Employment'
     df['SourceName'] = 'StatCan_LFS'
@@ -101,11 +96,10 @@ def sc_lfs_parse(**kwargs):
 
 def call_country_code(country):
     """
-    Determine country code
+    Determine country code, use pycountry to call on 3 digit iso country code
     :param country: str, country name
     :return: str, country code
     """
-    """use pycountry to call on 3 digit iso country code"""
     country_info = pycountry.countries.get(name=country)
     country_numeric_iso = country_info.numeric
     return country_numeric_iso

@@ -11,7 +11,8 @@ Script creates crosswalks for Land and Water
 
 import io
 import pandas as pd
-from flowsa.common import datapath, make_http_request
+from flowsa.common import make_http_request
+from flowsa.settings import datapath
 from flowsa.data_source_scripts.EIA_CBECS_Land import standardize_eia_cbecs_land_activity_names
 
 if __name__ == '__main__':
@@ -21,7 +22,7 @@ if __name__ == '__main__':
     # make url requestl, as defined in common.py
     r = make_http_request(url)
     # Convert response to dataframe, skipping first three rows
-    df_raw = pd.io.excel.read_excel(io.BytesIO(r.content), skiprows=3)
+    df_raw = pd.read_excel(io.BytesIO(r.content), skiprows=3)
 
     # Rename first column to sector (naics 2002)
     df = df_raw.rename(columns={df_raw.columns[0]: "Sector"})

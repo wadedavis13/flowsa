@@ -21,20 +21,17 @@ Data output saved as csv, retaining assigned file name "foss_landings.csv"
 
 import pandas as pd
 from flowsa.flowbyfunctions import assign_fips_location_system
-from flowsa.common import externaldatapath, get_state_FIPS
+from flowsa.common import get_state_FIPS
+from flowsa.settings import externaldatapath
 
 
-def noaa_parse(**kwargs):
+def noaa_parse(dataframe_list, args):
     """
     Combine, parse, and format the provided dataframes
-    :param kwargs: potential arguments include:
-                   dataframe_list: list of dataframes to concat and format
-                   args: dictionary, used to run flowbyactivity.py ('year' and 'source')
+    :param dataframe_list: list of dataframes to concat and format
+    :param args: dictionary, used to run flowbyactivity.py ('year' and 'source')
     :return: df, parsed and partially formatted to flowbyactivity specifications
     """
-    # load arguments necessary for function
-    args = kwargs['args']
-
     # Read directly into a pandas df
     df_raw = pd.read_csv(externaldatapath + "foss_landings.csv")
 
@@ -55,7 +52,7 @@ def noaa_parse(**kwargs):
     # sum florida data after casting rows as numeric
     df['Sum Dollars'] = df['Sum Dollars'].str.replace(r',', '')
     df["Sum Dollars"] = df["Sum Dollars"].apply(pd.to_numeric)
-    df2 = df.groupby(['Year', 'State'], as_index=False)[["Sum Dollars"]].agg("sum")
+    df2 = df.groupby(['Year', 'State'], as_index=False).agg({"Sum Dollars": sum})
 
     # new column includes state fips
     df3 = df2.merge(df_state[["State", "FIPS"]], how="left", left_on="State", right_on="State")

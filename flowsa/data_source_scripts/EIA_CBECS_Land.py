@@ -10,30 +10,26 @@ Last updated: Monday, August 17, 2020
 import io
 import pandas as pd
 import numpy as np
-from flowsa.common import US_FIPS, get_region_and_division_codes, withdrawn_keyword,\
-    clean_str_and_capitalize, fba_default_grouping_fields
+from flowsa.common import US_FIPS, get_region_and_division_codes, WITHDRAWN_KEYWORD,\
+    clean_str_and_capitalize, fba_mapped_default_grouping_fields
+from flowsa.settings import vLogDetailed
 from flowsa.flowbyfunctions import assign_fips_location_system, aggregator
-from flowsa.values_from_literature import \
+from flowsa.literature_values import \
     get_commercial_and_manufacturing_floorspace_to_land_area_ratio
+from flowsa.validation import calculate_flowamount_diff_between_dfs
 
-def eia_cbecs_land_URL_helper(**kwargs):
+def eia_cbecs_land_URL_helper(build_url, config, args):
     """
     This helper function uses the "build_url" input from flowbyactivity.py, which
     is a base url for data imports that requires parts of the url text string
     to be replaced with info specific to the data year.
     This function does not parse the data, only modifies the urls from which data is obtained.
-    :param kwargs: potential arguments include:
-                   build_url: string, base url
-                   config: dictionary, items in FBA method yaml
-                   args: dictionary, arguments specified when running flowbyactivity.py
-                   flowbyactivity.py ('year' and 'source')
+    :param build_url: string, base url
+    :param config: dictionary, items in FBA method yaml
+    :param args: dictionary, arguments specified when running flowbyactivity.py
+        flowbyactivity.py ('year' and 'source')
     :return: list, urls to call, concat, parse, format into Flow-By-Activity format
     """
-
-    # load the arguments necessary for function
-    build_url = kwargs['build_url']
-    config = kwargs['config']
-
     # initiate url list for coa cropland data
     urls = []
     # replace "__xlsx_name__" in build_url to create three urls
@@ -45,34 +41,31 @@ def eia_cbecs_land_URL_helper(**kwargs):
     return urls
 
 
-def eia_cbecs_land_call(**kwargs):
+def eia_cbecs_land_call(url, response_load, args):
     """
     Convert response for calling url to pandas dataframe, begin parsing df into FBA format
-    :param kwargs: potential arguments include:
-                   url: string, url
-                   response_load: df, response from url call
-                   args: dictionary, arguments specified when running
-                   flowbyactivity.py ('year' and 'source')
+    :param kwargs: url: string, url
+    :param kwargs: response_load: df, response from url call
+    :param kwargs: args: dictionary, arguments specified when running
+        flowbyactivity.py ('year' and 'source')
     :return: pandas dataframe of original source data
     """
-    # load arguments necessary for function
-    url = kwargs['url']
-    response_load = kwargs['r']
-
     # Convert response to dataframe
-    df_raw_data = pd.io.excel.read_excel(io.BytesIO(response_load.content), sheet_name='data')
-    df_raw_rse = pd.io.excel.read_excel(io.BytesIO(response_load.content), sheet_name='rse')
+    df_raw_data = pd.read_excel(io.BytesIO(response_load.content), sheet_name='data')
+    df_raw_rse = pd.read_excel(io.BytesIO(response_load.content), sheet_name='rse')
 
-    if ("b5.xlsx" in url):
+    if "b5.xlsx" in url:
         # skip rows and remove extra rows at end of dataframe
         df_data = pd.DataFrame(df_raw_data.loc[15:32]).reindex()
         df_rse = pd.DataFrame(df_raw_rse.loc[15:32]).reindex()
 
-        df_data.columns = ["Name", "All buildings", "New England", "Middle Atlantic", "East North Central",
+        df_data.columns = ["Name", "All buildings", "New England",
+                           "Middle Atlantic", "East North Central",
                            "West North Central", "South Atlantic",
                            "East South Central", "West South Central",
                            "Mountain", "Pacific"]
-        df_rse.columns = ["Name", "All buildings", "New England", "Middle Atlantic", "East North Central",
+        df_rse.columns = ["Name", "All buildings", "New England",
+                          "Middle Atlantic", "East North Central",
                           "West North Central", "South Atlantic",
                           "East South Central", "West South Central",
                           "Mountain", "Pacific"]
@@ -83,7 +76,7 @@ def eia_cbecs_land_call(**kwargs):
         df_data = df_data.melt(id_vars=["Name"],
                                var_name="Location",
                                value_name="FlowAmount")
-    if ("b12.xlsx" in url):
+    if "b12.xlsx" in url:
         # skip rows and remove extra rows at end of dataframe
         df_data1 = pd.DataFrame(df_raw_data[4:5]).reindex()
         df_data2 = pd.DataFrame(df_raw_data.loc[46:50]).reindex()
@@ -95,10 +88,12 @@ def eia_cbecs_land_call(**kwargs):
         df_data = df_data.iloc[:, 0:9]
         df_rse = df_rse.iloc[:, 0:9]
 
-        df_data.columns = ["Description", "All buildings", "Office", "Warehouse and storage", "Service",
+        df_data.columns = ["Description", "All buildings", "Office",
+                           "Warehouse and storage", "Service",
                            "Mercantile", "Religious worship",
                            "Education", "Public assembly"]
-        df_rse.columns = ["Description", "All buildings", "Office", "Warehouse and storage", "Service",
+        df_rse.columns = ["Description", "All buildings", "Office",
+                          "Warehouse and storage", "Service",
                           "Mercantile", "Religious worship",
                           "Education", "Public assembly"]
         df_rse = df_rse.melt(id_vars=["Description"],
@@ -107,7 +102,7 @@ def eia_cbecs_land_call(**kwargs):
         df_data = df_data.melt(id_vars=["Description"],
                                var_name="Name",
                                value_name="FlowAmount")
-    if ("b14.xlsx" in url):
+    if "b14.xlsx" in url:
         # skip rows and remove extra rows at end of dataframe
         df_data = pd.DataFrame(df_raw_data.loc[27:31]).reindex()
         df_rse = pd.DataFrame(df_raw_rse.loc[27:31]).reindex()
@@ -132,18 +127,13 @@ def eia_cbecs_land_call(**kwargs):
     return df
 
 
-def eia_cbecs_land_parse(**kwargs):
+def eia_cbecs_land_parse(dataframe_list, args):
     """
     Combine, parse, and format the provided dataframes
-    :param kwargs: potential arguments include:
-                   dataframe_list: list of dataframes to concat and format
-                   args: dictionary, used to run flowbyactivity.py ('year' and 'source')
+    :param dataframe_list: list of dataframes to concat and format
+    :param args: dictionary, used to run flowbyactivity.py ('year' and 'source')
     :return: df, parsed and partially formatted to flowbyactivity specifications
     """
-    # load arguments necessary for function
-    dataframe_list = kwargs['dataframe_list']
-    args = kwargs['args']
-
     # concat dataframes
     df_array = []
     for dataframes in dataframe_list:
@@ -152,15 +142,18 @@ def eia_cbecs_land_parse(**kwargs):
         if "Location" not in list(dataframes):
             dataframes["Location"] = US_FIPS
             dataframes = assign_fips_location_system(dataframes, args['year'])
-            dataframes = dataframes.drop(dataframes[dataframes.Description == "Any elevators"].index)
+            dataframes = dataframes.drop(dataframes[dataframes.Description ==
+                                                    "Any elevators"].index)
             dataframes["Description"] = dataframes["Description"].apply(
                 lambda x: x if 'All buildings' in x else x + " floors")
         else:
-            dataframes = dataframes.drop(dataframes[dataframes.ActivityConsumedBy == "Before 1920"].index)
+            dataframes = dataframes.drop(dataframes[dataframes.ActivityConsumedBy ==
+                                                    "Before 1920"].index)
             # rename location
             dataframes["Name"] = dataframes["Location"] + ' Division'
             dcodes = get_region_and_division_codes()
-            dataframes = dataframes.merge(dcodes[['Division', 'Name', 'LocationSystem']], how='left')
+            dataframes = dataframes.merge(dcodes[['Division', 'Name',
+                                                  'LocationSystem']], how='left')
             dataframes["Description"] = "All buildings"
             dataframes['Location'] = dataframes['Division'].replace(float("NaN"), US_FIPS)
             dataframes.loc[dataframes.Location == US_FIPS, "LocationSystem"] = "FIPS_2010"
@@ -173,14 +166,18 @@ def eia_cbecs_land_parse(**kwargs):
     df = standardize_eia_cbecs_land_activity_names(df, column_to_standardize='ActivityConsumedBy')
 
     # replace withdrawn code
-    df.loc[df['FlowAmount'] == "Q", 'FlowAmount'] = 0 #withdrawn_keyword
-    df.loc[df['FlowAmount'] == "N", 'FlowAmount'] = 0 #withdrawn_keyword
+    df.loc[df['FlowAmount'] == "Q", 'FlowAmount'] = WITHDRAWN_KEYWORD
+    df.loc[df['FlowAmount'] == "N", 'FlowAmount'] = WITHDRAWN_KEYWORD
     df.loc[df['FlowAmount'].isin(["nan", np.nan]), 'FlowAmount'] = 0
     df.loc[df['Spread'].isin(["", " "]), 'Spread'] = 0
     df["Class"] = 'Land'
     df["SourceName"] = 'EIA_CBECS_Land'
     df['Year'] = args["year"]
-    df['FlowName'] = "Commercial, " + df["ActivityConsumedBy"] + ", Total floorspace"
+    df['FlowName'] = "Commercial, " + df["ActivityConsumedBy"] + \
+                     ", Total floorspace, " + df['Description']
+    # if 'all buildings' at end of flowname, drop
+    df['FlowName'] = df['FlowName'].apply(lambda x: x.replace('Total floorspace, All buildings',
+                                                              'Total floorspace'))
     df['Compartment'] = 'ground'
     df['Unit'] = "million square feet"
     df['MeasureofSpread'] = "RSE"
@@ -205,29 +202,34 @@ def standardize_eia_cbecs_land_activity_names(df, column_to_standardize):
     # from flowsa.common import clean_str_and_capitalize
 
     # standardize strings in provided column
-    df[column_to_standardize] = df[column_to_standardize].replace({'Public Order/ Safety': 'Public order and safety',
-                                                                   'Retail (mall)': 'Enclosed and strip malls',
-                                                                   'Inpatient': 'Health care In-Patient',
-                                                                   'Outpatient': 'Health care Out-Patient',
-                                                                   'Inpatient Health Care': 'Health care In-Patient',
-                                                                   'Outpatient Health Care': 'Health care Out-Patient',
-                                                                   'Retail (non - mall)': 'Retail (other than mall)',
-                                                                   'Retail (non-mall)': 'Retail (other than mall)',
-                                                                   'Warehouse/ Storage': 'Warehouse and storage'
-                                                                   })
+    df[column_to_standardize] = \
+        df[column_to_standardize].replace({'Public Order/ Safety': 'Public order and safety',
+                                           'Retail (mall)': 'Enclosed and strip malls',
+                                           'Inpatient': 'Health care In-Patient',
+                                           'Outpatient': 'Health care Out-Patient',
+                                           'Inpatient Health Care': 'Health care In-Patient',
+                                           'Outpatient Health Care': 'Health care Out-Patient',
+                                           'Retail (non - mall)': 'Retail (other than mall)',
+                                           'Retail (non-mall)': 'Retail (other than mall)',
+                                           'Warehouse/ Storage': 'Warehouse and storage'
+                                           })
 
     # modify capitalization
-    df[column_to_standardize] = df.apply(lambda x: clean_str_and_capitalize(x[column_to_standardize]), axis=1)
+    df[column_to_standardize] = \
+        df.apply(lambda x:clean_str_and_capitalize(x[column_to_standardize]), axis=1)
 
     # exception to capitalization rule is health care
-    df[column_to_standardize] = df[column_to_standardize].replace({'Health care in-patient': 'Health care In-Patient',
-                                                                   'Health care out-patient': 'Health care Out-Patient'
-                                                                   })
+    df[column_to_standardize] = \
+        df[column_to_standardize].replace({'Health care in-patient':
+                                               'Health care In-Patient',
+                                           'Health care out-patient':
+                                               'Health care Out-Patient'
+                                           })
 
     return df
 
 
-def cbecs_land_fba_cleanup(fba):
+def cbecs_land_fba_cleanup(fba_load):
     """
     Clean up the land fba for use in allocation
     :param fba: df, eia cbecs land flowbyactivity format
@@ -235,15 +237,21 @@ def cbecs_land_fba_cleanup(fba):
     """
 
     # estimate floor space using number of floors
-    fba = calculate_floorspace_based_on_number_of_floors(fba)
+    fba = calculate_floorspace_based_on_number_of_floors(fba_load)
 
     # calculate the land area in addition to building footprint
-    fba = calculate_total_facility_land_area(fba)
+    fba1 = calculate_total_facility_land_area(fba)
 
-    return fba
+    # drop activities of 'all buildings' to avoid double counting
+    fba2 = fba1[fba1['ActivityConsumedBy'] != 'All buildings'].reset_index(drop=True)
+    vLogDetailed.info('Drop the principle building activity "All buildings" to '
+                      'avoid double counting')
+    calculate_flowamount_diff_between_dfs(fba1, fba2)
+
+    return fba2
 
 
-def calculate_floorspace_based_on_number_of_floors(fba):
+def calculate_floorspace_based_on_number_of_floors(fba_load):
     """
     Estimate total floorspace for each building type based on data
     on the number of floors for each building type.
@@ -255,31 +263,51 @@ def calculate_floorspace_based_on_number_of_floors(fba):
     """
 
     # disaggregate mercentile to malls and non malls
-    fba = disaggregate_eia_cbecs_mercentile(fba)
+    fba = disaggregate_eia_cbecs_mercentile(fba_load)
+    vLogDetailed.info('Calculate floorspace for mall and nonmall buildings with different '
+                      'number of floors. Once calculated, drop mercantile data from dataframe '
+                      'to avoid double counting.')
+    calculate_flowamount_diff_between_dfs(fba_load, fba)
 
     # disaggregate other and vacant
-    fba = disaggregate_eia_cbecs_vacant_and_other(fba)
+    fba2 = disaggregate_eia_cbecs_vacant_and_other(fba)
+    vLogDetailed.info('Due to data suppression for floorspace by building number of floors, '
+                      'some data is lost when dropping floorspace for all buildings within a '
+                      'principle building activity. To avoid this data loss, all remaining '
+                      'floorspace for "All buildings" by number of floors is allocated to '
+                      '"Vacant" and "Other" principle building activities, as these activities '
+                      'are allocated to all commercial building sectors. This assumption results '
+                      'in a total floorspace increase for "Vacant" and "Other" activities.')
+    calculate_flowamount_diff_between_dfs(fba, fba2)
 
     # drop data for 'all buildings'
-    fba = fba[fba['Description'] != 'All buildings']
+    fba3 = fba2[fba2['Description'] != 'All buildings']
     # add column 'DivisionFactor' based on description
-    fba = fba.assign(DivisionFactor=fba['Description'].apply(lambda x: (1 if 'One' in x
-                                                                        else (2 if 'Two' in x
-                                                                              else (3 if 'Three' in x
-                                                                                    else (6 if 'Four' in x
-                                                                                          else (15 if 'Ten' in x
-                                                                                                else ""
-                                                                                                )))))))
+    fba3 = fba3.assign(DivisionFactor=
+                     fba3['Description'].apply(lambda x: (1 if 'One' in x
+                                                         else (2 if 'Two' in x
+                                                               else (3 if 'Three' in x
+                                                                     else (6 if 'Four' in x
+                                                                           else (15 if 'Ten' in x
+                                                                                 else ""
+                                                                                 )))))))
     # modify flowamounts to represent building footprint rather than total floorspace
-    fba['FlowAmount'] = fba['FlowAmount'] / fba['DivisionFactor']
+    fba3['FlowAmount'] = fba3['FlowAmount'] / fba3['DivisionFactor']
     # sum values for single flowamount for each bulding type
-    groupbycols = fba_default_grouping_fields
-    fba2 = aggregator(fba, groupbycols)
+    vLogDetailed.info('Drop flows for "All Buildings" to avoid double counting, as maintain '
+                      'floorspace by buildings based on number of floors. Also dividing total '
+                      'floorspace by number of floors to calculate a building footprint. '
+                      'Calculates result in reduced FlowAmount for all categories.')
+    calculate_flowamount_diff_between_dfs(fba2, fba3)
+    # rename the FlowAmounts and sum so total floorspace, rather than have
+    # multiple rows based on floors
+    fba3 = fba3.assign(FlowName=fba3['FlowName'].apply(lambda x: ','.join(x.split(',')[:-1])))
+    # modify the description
+    fba3 = fba3.assign(Description='Building Footprint')
+    groupbycols = fba_mapped_default_grouping_fields
+    fba4 = aggregator(fba3, groupbycols)
 
-    # add description
-    fba2 = fba2.assign(Description='Building Footprint')
-
-    return fba2
+    return fba4
 
 
 def disaggregate_eia_cbecs_mercentile(df_load):
@@ -302,7 +330,8 @@ def disaggregate_eia_cbecs_mercentile(df_load):
     df_merc_floors = df_merc_floors.rename(columns={'FlowAmount': 'Mercantile'})
 
     # subset to mall activities and calc ratio of mercantile
-    df_mall = df_load[df_load['ActivityConsumedBy'].isin(['Enclosed and strip malls'])].reset_index(drop=True)
+    df_mall = df_load[df_load['ActivityConsumedBy'].isin(['Enclosed and strip malls'
+                                                          ])].reset_index(drop=True)
     df_mall2 = df_mall.merge(df_merc_all)
     df_mall2['FlowAmount'] = df_mall2['FlowAmount'] / df_mall2['Mercantile']
     # drop description col and merge with mercantile floors, recalc flow amount
@@ -310,9 +339,12 @@ def disaggregate_eia_cbecs_mercentile(df_load):
     df_mall3 = df_mall2.merge(df_merc_floors)
     df_mall3['FlowAmount'] = df_mall3['FlowAmount'] * df_mall3['Mercantile']
     df_mall3 = df_mall3.drop(columns='Mercantile')
+    # update flownames
+    df_mall3['FlowName'] = df_mall3['FlowName'] + ', ' + df_mall3['Description']
 
     # repeat with non mall categories
-    df_nonmall = df_load[df_load['ActivityConsumedBy'].isin(['Retail (other than mall)'])].reset_index(drop=True)
+    df_nonmall = df_load[df_load['ActivityConsumedBy'].isin(['Retail (other than mall)'
+                                                             ])].reset_index(drop=True)
     df_nonmall2 = df_nonmall.merge(df_merc_all)
     df_nonmall2['FlowAmount'] = df_nonmall2['FlowAmount'] / df_nonmall2['Mercantile']
     # drop description col and merge with mercantile floors, recalc flow amount
@@ -320,6 +352,8 @@ def disaggregate_eia_cbecs_mercentile(df_load):
     df_nonmall3 = df_nonmall2.merge(df_merc_floors)
     df_nonmall3['FlowAmount'] = df_nonmall3['FlowAmount'] * df_nonmall3['Mercantile']
     df_nonmall3 = df_nonmall3.drop(columns='Mercantile')
+    # update flownames
+    df_nonmall3['FlowName'] = df_nonmall3['FlowName'] + ', ' + df_nonmall3['Description']
 
     # concat dfs
     df = pd.concat([df_load, df_mall3, df_nonmall3], ignore_index=True, sort=False)
@@ -347,7 +381,7 @@ def disaggregate_eia_cbecs_vacant_and_other(df_load):
     df_nvno = df_load[df_load['Description'].str.contains('floors')]
     df_nvno = df_nvno[df_nvno['ActivityConsumedBy'] != 'All buildings']
     df_nvno = df_nvno.groupby(['Unit', 'Location', 'LocationSystem', 'Year',
-                               'Description'], as_index=False)[['FlowAmount']].agg("sum")
+                               'Description'], as_index=False).agg({'FlowAmount': sum})
     df_act = df_nvno.rename(columns={'FlowAmount': 'NonVacantNonOther'})
 
     # merge df and subtract to determine FlowAmount to allocate to vacant and other activities
@@ -357,7 +391,8 @@ def disaggregate_eia_cbecs_vacant_and_other(df_load):
     # create ratio of vacant and other
     df_vo = df_load[df_load['ActivityConsumedBy'].isin(['Vacant', 'Other'])].reset_index(drop=True)
     df_vo = df_vo.assign(
-        Denominator=df_vo.groupby(['Location', 'LocationSystem', 'Year'])['FlowAmount'].transform('sum'))
+        Denominator=df_vo.groupby(['Location', 'LocationSystem',
+                                   'Year'])['FlowAmount'].transform('sum'))
     df_vo['FlowAmount'] = df_vo['FlowAmount'] / df_vo['Denominator']
 
     # drop description col, merge with info on floors and use the ratios to calculate floor area
@@ -365,6 +400,7 @@ def disaggregate_eia_cbecs_vacant_and_other(df_load):
     df_vo2 = df_vo.merge(df_rem[['Unit', 'Location', 'LocationSystem', 'Remainder', 'Description']])
     df_vo2['FlowAmount'] = df_vo2['FlowAmount'] * df_vo2['Remainder']
     df_vo2 = df_vo2.drop(columns='Remainder')
+    df_vo2['FlowName'] = df_vo2['FlowName'] + ', ' + df_vo2['Description']
 
     # concat with original df
     df = pd.concat([df_load, df_vo2], ignore_index=True, sort=False)
@@ -382,11 +418,11 @@ def calculate_total_facility_land_area(df):
     for each activity
     """
 
-    # from flowsa.values_from_literature import
-    # get_commercial_and_manufacturing_floorspace_to_land_area_ratio
+    floor_space_to_land_area_ratio = \
+        get_commercial_and_manufacturing_floorspace_to_land_area_ratio()
 
-    floor_space_to_land_area_ratio = get_commercial_and_manufacturing_floorspace_to_land_area_ratio()
-
-    df = df.assign(FlowAmount=(df['FlowAmount'] / floor_space_to_land_area_ratio) - df['FlowAmount'])
+    vLogDetailed.info('Modifying FlowAmounts - Assuming the floor space to land area ratio is 1:4')
+    df = df.assign(FlowAmount=(df['FlowAmount'] / floor_space_to_land_area_ratio)
+                              - df['FlowAmount'])
 
     return df

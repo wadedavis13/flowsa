@@ -15,8 +15,8 @@ SI obtained 08/26/2020
 
 import io
 import pandas as pd
-from flowsa.common import datapath, make_http_request
-
+from flowsa.common import make_http_request
+from flowsa.settings import datapath
 
 # 2012--2018 fisheries data at state level
 csv_load = "https://doi.org/10.1371/journal.pone.0153211.s001"
@@ -26,6 +26,6 @@ if __name__ == '__main__':
 
     response = make_http_request(csv_load)
     # Read directly into a pandas df
-    raw_df = pd.io.excel.read_excel(io.BytesIO(response.content)).dropna().reset_index(drop=True)
+    raw_df = pd.read_excel(io.BytesIO(response.content)).dropna().reset_index(drop=True)
     # save data to csv
     raw_df.to_csv(datapath + "Larson_UrbanPublicParks_SI.csv", index=False)

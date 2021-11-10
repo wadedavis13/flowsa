@@ -8,26 +8,21 @@ https://www.ers.usda.gov/data-products/farm-income-and-wealth-statistics/
 Downloads the February 5, 2020 update
 """
 
-import pandas as pd
-import numpy as np
 import zipfile
 import io
-from flowsa.common import *
+import pandas as pd
+from flowsa.common import US_FIPS, get_all_state_FIPS_2, us_state_abbrev
 
 
-def fiws_call(**kwargs):
+def fiws_call(url, response_load, args):
     """
     Convert response for calling url to pandas dataframe, begin parsing df into FBA format
-    :param kwargs: potential arguments include:
-                   url: string, url
-                   response_load: df, response from url call
-                   args: dictionary, arguments specified when running
-                   flowbyactivity.py ('year' and 'source')
+    :param kwargs: url: string, url
+    :param kwargs: response_load: df, response from url call
+    :param kwargs: args: dictionary, arguments specified when running
+        flowbyactivity.py ('year' and 'source')
     :return: pandas dataframe of original source data
     """
-    # load arguments necessary for function
-    response_load = kwargs['r']
-
     # extract data from zip file (only one csv)
     with zipfile.ZipFile(io.BytesIO(response_load.content), "r") as f:
         # read in file names
@@ -37,18 +32,13 @@ def fiws_call(**kwargs):
         return df
 
 
-def fiws_parse(**kwargs):
+def fiws_parse(dataframe_list, args):
     """
     Combine, parse, and format the provided dataframes
-    :param kwargs: potential arguments include:
-                   dataframe_list: list of dataframes to concat and format
-                   args: dictionary, used to run flowbyactivity.py ('year' and 'source')
+    :param dataframe_list: list of dataframes to concat and format
+    :param args: dictionary, used to run flowbyactivity.py ('year' and 'source')
     :return: df, parsed and partially formatted to flowbyactivity specifications
     """
-    # load arguments necessary for function
-    dataframe_list = kwargs['dataframe_list']
-    args = kwargs['args']
-
     # concat dataframes
     df = pd.concat(dataframe_list, sort=False)
     # select data for chosen year, cast year as string to match argument
@@ -67,7 +57,8 @@ def fiws_parse(**kwargs):
     # drop "All" in variabledescription2
     df.loc[df['VariableDescriptionPart2'] == 'All', 'VariableDescriptionPart2'] = 'drop'
     # combine variable descriptions to create Activity name and remove ", drop"
-    df['ActivityProducedBy'] = df['VariableDescriptionPart1'] + ', ' + df['VariableDescriptionPart2']
+    df['ActivityProducedBy'] = df['VariableDescriptionPart1'] + \
+                               ', ' + df['VariableDescriptionPart2']
     df['ActivityProducedBy'] = df['ActivityProducedBy'].str.replace(", drop", "", regex=True)
     # trim whitespace
     df['ActivityProducedBy'] = df['ActivityProducedBy'].str.strip()

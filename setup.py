@@ -1,31 +1,35 @@
-from setuptools import setup
+"""
+Setup for flowsa package
+"""
+
+from setuptools import setup, find_packages
 
 setup(
     name='flowsa',
-    version='0.1.1',
-    packages=['flowsa'],
+    version='0.4.1',
+    packages=find_packages(),
     package_dir={'flowsa': 'flowsa'},
-    package_data={'flowsa': [
-        "data/*.*", "output/*.*"]},
+    package_data={'flowsa': ["data/*.*"]},
     include_package_data=True,
     install_requires=[
-        'fedelemflowlist @ git+https://github.com/USEPA/Federal-LCA-Commons-Elementary-Flow-List@v1.0.7#egg=fedelemflowlist',
-        'esupy @ git+https://github.com/USEPA/esupy@v0.1.2#egg=esupy',
-        'StEWI @ git+https://github.com/USEPA/standardizedinventories@v0.9.7#egg=StEWI',
-        'pandas>=1.1.0',
+        'fedelemflowlist @ git+https://github.com/USEPA/Federal-LCA-Commons-Elementary-Flow-List.git@develop#egg=fedelemflowlist',
+        'esupy @ git+https://github.com/USEPA/esupy.git@develop#egg=esupy',
+        'StEWI @ git+https://github.com/USEPA/standardizedinventories.git@develop#egg=StEWI',
+        'pandas>=1.3.2',
         'pip>=9',
         'setuptools>=41',
         'pyyaml>=5.3',
-        'ruamel.yaml>=0.16.13',
         'requests>=2.22.0',
         'appdirs>=1.4.3',
         'pycountry>=19.8.18',
-        'xlrd>=1.2.0',
+        'xlrd>=2.0.1',
         'openpyxl>=3.0.7',
         'requests_ftp==0.3.1',
         'tabula-py>=2.1.1',
-        'numpy<1.20',
-        'bibtexparser>=1.2.0'
+        'numpy>=1.20.1',
+        'bibtexparser>=1.2.0',
+        'joblib >= 1.1.0',
+        'python-dotenv >= 0.19.1'
     ],
     url='https://github.com/USEPA/FLOWSA',
     license='CC0',
@@ -39,5 +43,6 @@ setup(
         "Programming Language :: Python :: 3.x",
         "Topic :: Utilities",
     ],
-    description='Complies and provides a standardized list of elementary flows and flow mappings for life cycle assessment data'
+    description='Complies and provides a standardized list of elementary flows and '
+                'flow mappings for life cycle assessment data'
 )

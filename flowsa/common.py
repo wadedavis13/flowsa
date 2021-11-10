@@ -5,84 +5,27 @@
 """Common variables and functions used across flowsa"""
 
 import shutil
-import sys
 import os
-import subprocess
-import logging as log
 import yaml
-from ruamel.yaml import YAML
 import requests
 import requests_ftp
 import pandas as pd
 import numpy as np
 import pycountry
-import pkg_resources
-from esupy.processed_data_mgmt import Paths, FileMeta, create_paths_if_missing
-
-# set version number for use in FBA and FBS output naming schemas, needs to be updated with setup.py
-pkg_version_number = '0.1.1'
-
-log.basicConfig(level=log.DEBUG,
-                format='%(asctime)s %(levelname)-8s %(message)s',
-                datefmt='%Y-%m-%d %H:%M:%S',
-                stream=sys.stdout)
-
-try:
-    modulepath = os.path.dirname(os.path.realpath(__file__)).replace('\\', '/') + '/'
-except NameError:
-    modulepath = 'flowsa/'
-
-datapath = modulepath + 'data/'
-sourceconfigpath = datapath + 'flowbyactivitymethods/'
-crosswalkpath = datapath + 'activitytosectormapping/'
-flowbysectormethodpath = datapath + 'flowbysectormethods/'
-flowbysectoractivitysetspath = datapath + 'flowbysectoractivitysets/'
-externaldatapath = datapath + 'external_data/'
-
-datasourcescriptspath = modulepath + 'data_source_scripts/'
-
-paths = Paths()
-paths.local_path = os.path.realpath(paths.local_path + "/flowsa")
-outputpath = paths.local_path.replace('\\', '/') + '/'
-fbaoutputpath = outputpath + 'FlowByActivity/'
-fbsoutputpath = outputpath + 'FlowBySector/'
-biboutputpath = outputpath + 'Bibliography/'
-logoutputpath = outputpath + 'Log/'
-
-default_download_if_missing = False
-
-# paths to scripts
-scriptpath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace('\\', '/') + \
-             '/scripts/'
-scriptsFBApath = scriptpath + 'FlowByActivity_Datasets/'
-
-# setup log file handler
-create_paths_if_missing(logoutputpath)
-fh = log.FileHandler(logoutputpath+'flowsa.log', mode='w')
-fh.setLevel(log.DEBUG)
-formatter = log.Formatter('%(asctime)s %(levelname)-8s %(message)s',
-                          datefmt='%Y-%m-%d %H:%M:%S')
-fh.setFormatter(formatter)
-ch = log.StreamHandler(stream=sys.stdout)
-ch.setLevel(log.INFO)
-ch.setFormatter(formatter)
-for hdlr in log.getLogger('').handlers[:]:
-    log.getLogger('').removeHandler(hdlr)
-log.getLogger('').addHandler(fh)
-log.getLogger('').addHandler(ch)
+import joblib
+from dotenv import load_dotenv
+from esupy.processed_data_mgmt import create_paths_if_missing
+from flowsa.schema import flow_by_activity_fields, flow_by_sector_fields, flow_by_sector_collapsed_fields, \
+    flow_by_activity_mapped_fields, flow_by_activity_wsec_fields, flow_by_activity_mapped_wsec_fields, activity_fields
+from flowsa.settings import datapath, MODULEPATH, logoutputpath, sourceconfigpath, log
 
 
-pkg = pkg_resources.get_distribution("flowsa")
-try:
-    git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode(
-        'ascii')[0:7]
-except:
-    git_hash = None
-
-# Common declaration of write format for package data products
-write_format = "parquet"
+# Sets default Sector Source Name
+SECTOR_SOURCE_NAME = 'NAICS_2012_Code'
+flow_types = ['ELEMENTARY_FLOW', 'TECHNOSPHERE_FLOW', 'WASTE_FLOW']
 
 US_FIPS = "00000"
+
 fips_number_key = {"national": 0,
                    "state": 2,
                    "county": 5}
@@ -95,52 +38,56 @@ sector_level_key = {"NAICS_2": 2,
 
 # withdrawn keyword changed to "none" over "W"
 # because unable to run calculation functions with text string
-withdrawn_keyword = None
-
-flow_types = ['ELEMENTARY_FLOW', 'TECHNOSPHERE_FLOW', 'WASTE_FLOW']
-
-# Sets default Sector Source Name
-sector_source_name = 'NAICS_2012_Code'
+WITHDRAWN_KEYWORD = np.nan
 
 
 def load_api_key(api_source):
     """
-    Loads a txt file from the appdirs user directory with a set name
-    in the form of the host name and '_API_KEY.txt' like 'BEA_API_KEY.txt'
-    containing the users personal API key. The user must register with this
-    API and get the key and save it to a .txt file in the user directory specified
-    by local_path (see common.py for definition)
+    Loads an API Key from "API_Keys.env" file using the
+    'api_name' defined in the FBA source config file. The '.env' file contains
+    the users personal API keys. The user must register with this
+    API and get the key and manually add to "API_Keys.env"
+
+    See wiki for how to get an api:
+    https://github.com/USEPA/flowsa/wiki/Using-FLOWSA#api-keys
+
     :param api_source: str, name of source, like 'BEA' or 'Census'
     :return: the users API key as a string
     """
-    # create directory if missing
-    os.makedirs(outputpath + '/API_Keys', exist_ok=True)
-    # key path
-    keyfile = outputpath + '/API_Keys/' + api_source + '_API_KEY.txt'
-    key = ""
-    try:
-        with open(keyfile, mode='r') as keyfilecontents:
-            key = keyfilecontents.read()
-    except IOError:
-        log.error("Key file not found in 'API_Keys' directory. See github wiki for help"
-                  "https://github.com/USEPA/flowsa/wiki/GitHub-Contributors#api-keys")
+    load_dotenv(f'{MODULEPATH}API_Keys.env', verbose=True)
+    key = os.getenv(api_source)
+    if key is None:
+        log.error(f"Key file {api_source} not found. See github wiki for help "
+                  "https://github.com/USEPA/flowsa/wiki/Using-FLOWSA#api-keys")
     return key
 
 
-def make_http_request(url):
+memory = joblib.Memory(".cache")
+
+
+@memory.cache()
+def make_http_request(url, set_cookies=False):
     """
     Makes http request using requests library
     :param url: URL to query
+    :param set_cookies: bool, default set to False
+        set to True if cookies required
     :return: request Object
     """
+    s = requests
+
     r = []
     try:
-        r = requests.get(url)
+        r = s.get(url)
+        # determine if require request.post to set cookies
+        if set_cookies:
+            cookies = dict(r.cookies)
+            r = s.post(url, verify=True, cookies=cookies)
     except requests.exceptions.InvalidSchema:  # if url is ftp rather than http
         requests_ftp.monkeypatch_session()
         r = requests.Session().get(url)
     except requests.exceptions.ConnectionError:
-        log.error("URL Connection Error for " + url)
+        log.error("URL Connection Error for %s", url)
     try:
         r.raise_for_status()
     except requests.exceptions.HTTPError:
@@ -148,70 +95,35 @@ def make_http_request(url):
     return r
 
 
-def load_sector_crosswalk():
+def load_crosswalk(crosswalk_name):
     """
     Load NAICS crosswalk between the years 2007, 2012, 2017
     :return: df, NAICS crosswalk over the years
     """
-    cw = pd.read_csv(datapath + "NAICS_Crosswalk.csv", dtype="str")
+
+    cw_dict = {'sector': 'NAICS_Crosswalk',
+               'sector length': 'NAICS_2012_Crosswalk',
+               'household': 'Household_SectorCodes',
+               'government': 'Government_SectorCodes',
+               'BEA': 'NAICS_to_BEA_Crosswalk'
+               }
+
+    fn = cw_dict.get(crosswalk_name)
+
+    cw = pd.read_csv(f'{datapath}{fn}.csv', dtype="str")
     return cw
 
 
-def load_sector_length_crosswalk():
-    """
-    Load the 2-digit to 6-digit NAICS crosswalk for 2012
-    :return: df, NAICS 2012 crosswalk by sector length
-    """
-    cw = pd.read_csv(datapath + 'NAICS_2012_Crosswalk.csv', dtype='str')
-    return cw
-
-
-def load_household_sector_codes():
-    """
-    Load manually added household sector codes from csv
-    :return: df, household sector codes
-    """
-    household = pd.read_csv(datapath + 'Household_SectorCodes.csv', dtype='str')
-    return household
-
-
-def load_government_sector_codes():
-    """
-    Load the government sector codes from csv
-    :return: df, government sector codes
-    """
-    government = pd.read_csv(datapath + 'Government_SectorCodes.csv', dtype='str')
-    return government
-
-
-def load_bea_crosswalk():
-    """
-    Load the BEA crosswalk
-    :return: df, BEA crosswalk
-    """
-    cw = pd.read_csv(datapath + "BEA_Crosswalk.csv", dtype="str")
-    return cw
-
-
-def load_source_catalog():
+def load_yaml_dict(filename):
     """
     Load the information in 'source_catalog.yaml'
     :return: dictionary containing all information in source_catalog.yaml
     """
-    sources = datapath + 'source_catalog.yaml'
-    with open(sources, 'r') as f:
-        config = yaml.safe_load(f)
-    return config
-
-
-def load_sourceconfig(source):
-    """
-    Load the method yaml
-    :param source: string, method name
-    :return: dictionary, information on the source method
-    """
-    sfile = sourceconfigpath + source + '.yaml'
-    with open(sfile, 'r') as f:
+    if filename == 'source_catalog':
+        yaml_load = f'{datapath}source_catalog.yaml'
+    else:
+        yaml_load = sourceconfigpath + filename + '.yaml'
+    with open(yaml_load, 'r') as f:
         config = yaml.safe_load(f)
     return config
 
@@ -222,146 +134,34 @@ def load_values_from_literature_citations_config():
     values from the literature come from
     :return: dictionary of the values from the literature information
     """
-    sfile = datapath + 'values_from_literature_source_citations.yaml'
+    sfile = datapath + 'bibliographyinfo/values_from_literature_source_citations.yaml'
     with open(sfile, 'r') as f:
         config = yaml.safe_load(f)
     return config
 
 
-def update_fba_yaml_date(source):
+def load_fbs_methods_additional_fbas_config():
     """
-    Update the Flow-By-Activity method yaml with the current date.
-    Updates everytime a FBA is run.
-    :param source: string, Flow-By-Activity Source
-    :return: string, updated date in the FBA method yaml
+    Load the config file that contains information on where the
+    values from the literature come from
+    :return: dictionary of the values from the literature information
     """
-    filename = sourceconfigpath + source + '.yaml'
-
-    yml = YAML()
-    # open yaml
-    with open(filename) as f:
-        config = yml.load(f)
-        # update the method yaml with date generated
-        config['date_generated'] = pd.to_datetime('today').strftime('%Y-%m-%d')
-
-    # save yaml, preserving comments
-    with open(filename, "w") as file:
-        yml.dump(config, file)
+    sfile = datapath + 'bibliographyinfo/fbs_methods_additional_fbas.yaml'
+    with open(sfile, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
 
 
-flow_by_activity_fields = {'Class': [{'dtype': 'str'}, {'required': True}],
-                           'SourceName': [{'dtype': 'str'}, {'required': True}],
-                           'FlowName': [{'dtype': 'str'}, {'required': True}],
-                           'FlowAmount': [{'dtype': 'float'}, {'required': True}],
-                           'Unit': [{'dtype': 'str'}, {'required': True}],
-                           'FlowType': [{'dtype': 'str'}, {'required': True}],
-                           'ActivityProducedBy': [{'dtype': 'str'}, {'required': False}],
-                           'ActivityConsumedBy': [{'dtype': 'str'}, {'required': False}],
-                           'Compartment': [{'dtype': 'str'}, {'required': False}],
-                           'Location': [{'dtype': 'str'}, {'required': True}],
-                           'LocationSystem': [{'dtype': 'str'}, {'required': True}],
-                           'Year': [{'dtype': 'int'}, {'required': True}],
-                           'MeasureofSpread': [{'dtype': 'str'}, {'required': False}],
-                           'Spread': [{'dtype': 'float'}, {'required': False}],
-                           'DistributionType': [{'dtype': 'str'}, {'required': False}],
-                           'Min': [{'dtype': 'float'}, {'required': False}],
-                           'Max': [{'dtype': 'float'}, {'required': False}],
-                           'DataReliability': [{'dtype': 'float'}, {'required': True}],
-                           'DataCollection': [{'dtype': 'float'}, {'required': True}],
-                           'Description': [{'dtype': 'str'}, {'required': True}]
-                           }
-
-flow_by_sector_fields = \
-    {'Flowable': [{'dtype': 'str'}, {'required': True}],
-     'Class': [{'dtype': 'str'}, {'required': True}],
-     'SectorProducedBy': [{'dtype': 'str'}, {'required': False}],
-     'SectorConsumedBy': [{'dtype': 'str'}, {'required': False}],
-     'SectorSourceName': [{'dtype': 'str'}, {'required': False}],
-     'Context': [{'dtype': 'str'}, {'required': True}],
-     'Location': [{'dtype': 'str'}, {'required': True}],
-     'LocationSystem': [{'dtype': 'str'}, {'required': True}],
-     'FlowAmount': [{'dtype': 'float'}, {'required': True}],
-     'Unit': [{'dtype': 'str'}, {'required': True}],
-     'FlowType': [{'dtype': 'str'}, {'required': True}],
-     'Year': [{'dtype': 'int'}, {'required': True}],
-     'MeasureofSpread': [{'dtype': 'str'}, {'required': False}],
-     'Spread': [{'dtype': 'float'}, {'required': False}],
-     'DistributionType': [{'dtype': 'str'}, {'required': False}],
-     'Min': [{'dtype': 'float'}, {'required': False}],
-     'Max': [{'dtype': 'float'}, {'required': False}],
-     'DataReliability': [{'dtype': 'float'}, {'required': True}],
-     'TemporalCorrelation': [{'dtype': 'float'}, {'required': True}],
-     'GeographicalCorrelation': [{'dtype': 'float'}, {'required': True}],
-     'TechnologicalCorrelation': [{'dtype': 'float'}, {'required': True}],
-     'DataCollection': [{'dtype': 'float'}, {'required': True}],
-     'MetaSources': [{'dtype': 'str'}, {'required': True}]
-     }
-
-flow_by_sector_fields_w_activity = flow_by_sector_fields.copy()
-flow_by_sector_fields_w_activity.update({'ActivityProducedBy': [{'dtype': 'str'},
-                                                                {'required': False}],
-                                         'ActivityConsumedBy': [{'dtype': 'str'},
-                                                                {'required': False}]})
-
-flow_by_sector_collapsed_fields = \
-    {'Flowable': [{'dtype': 'str'}, {'required': True}],
-     'Class': [{'dtype': 'str'}, {'required': True}],
-     'Sector': [{'dtype': 'str'}, {'required': False}],
-     'SectorSourceName': [{'dtype': 'str'}, {'required': False}],
-     'Context': [{'dtype': 'str'}, {'required': True}],
-     'Location': [{'dtype': 'str'}, {'required': True}],
-     'LocationSystem': [{'dtype': 'str'}, {'required': True}],
-     'FlowAmount': [{'dtype': 'float'}, {'required': True}],
-     'Unit': [{'dtype': 'str'}, {'required': True}],
-     'FlowType': [{'dtype': 'str'}, {'required': True}],
-     'Year': [{'dtype': 'int'}, {'required': True}],
-     'MeasureofSpread': [{'dtype': 'str'}, {'required': False}],
-     'Spread': [{'dtype': 'float'}, {'required': False}],
-     'DistributionType': [{'dtype': 'str'}, {'required': False}],
-     'Min': [{'dtype': 'float'}, {'required': False}],
-     'Max': [{'dtype': 'float'}, {'required': False}],
-     'DataReliability': [{'dtype': 'float'}, {'required': True}],
-     'TemporalCorrelation': [{'dtype': 'float'}, {'required': True}],
-     'GeographicalCorrelation': [{'dtype': 'float'}, {'required': True}],
-     'TechnologicalCorrelation': [{'dtype': 'float'}, {'required': True}],
-     'DataCollection': [{'dtype': 'float'}, {'required': True}],
-     'MetaSources': [{'dtype': 'str'}, {'required': True}]
-                                   }
-
-flow_by_activity_wsec_mapped_fields = \
-    {'Class': [{'dtype': 'str'}, {'required': True}],
-     'SourceName': [{'dtype': 'str'}, {'required': True}],
-     'FlowName': [{'dtype': 'str'}, {'required': True}],
-     'FlowAmount': [{'dtype': 'float'}, {'required': True}],
-     'Unit': [{'dtype': 'str'}, {'required': True}],
-     'FlowType': [{'dtype': 'str'}, {'required': True}],
-     'ActivityProducedBy': [{'dtype': 'str'}, {'required': False}],
-     'ActivityConsumedBy': [{'dtype': 'str'}, {'required': False}],
-     'Compartment': [{'dtype': 'str'}, {'required': False}],
-     'Location': [{'dtype': 'str'}, {'required': True}],
-     'LocationSystem': [{'dtype': 'str'}, {'required': True}],
-     'Year': [{'dtype': 'int'}, {'required': True}],
-     'MeasureofSpread': [{'dtype': 'str'}, {'required': False}],
-     'Spread': [{'dtype': 'float'}, {'required': False}],
-     'DistributionType': [{'dtype': 'str'}, {'required': False}],
-     'Min': [{'dtype': 'float'}, {'required': False}],
-     'Max': [{'dtype': 'float'}, {'required': False}],
-     'DataReliability': [{'dtype': 'float'}, {'required': True}],
-     'DataCollection': [{'dtype': 'float'}, {'required': True}],
-     # 'Description': [{'dtype': 'str'}, {'required': True}],
-     'SectorProducedBy': [{'dtype': 'str'}, {'required': False}],
-     'SectorConsumedBy': [{'dtype': 'str'}, {'required': False}],
-     'SectorSourceName': [{'dtype': 'str'}, {'required': False}],
-     'ProducedBySectorType': [{'dtype': 'str'}, {'required': False}],
-     'ConsumedBySectorType': [{'dtype': 'str'}, {'required': False}]
-     }
-
-# A list of activity fields in each flow data format
-activity_fields = {'ProducedBy': [{'flowbyactivity': 'ActivityProducedBy'},
-                                  {'flowbysector': 'SectorProducedBy'}],
-                   'ConsumedBy': [{'flowbyactivity': 'ActivityConsumedBy'},
-                                  {'flowbysector': 'SectorConsumedBy'}]
-                   }
+def load_functions_loading_fbas_config():
+    """
+    Load the config file that contains information on where the
+    values from the literature come from
+    :return: dictionary of the values from the literature information
+    """
+    sfile = datapath + 'bibliographyinfo/functions_loading_fbas.yaml'
+    with open(sfile, 'r') as f:
+        config = yaml.safe_load(f)
+    return config
 
 
 def create_fill_na_dict(flow_by_fields):
@@ -375,9 +175,9 @@ def create_fill_na_dict(flow_by_fields):
         if v[0]['dtype'] == 'str':
             fill_na_dict[k] = ""
         elif v[0]['dtype'] == 'int':
-            fill_na_dict[k] = 9999
+            fill_na_dict[k] = 0
         elif v[0]['dtype'] == 'float':
-            fill_na_dict[k] = 0.0
+            fill_na_dict[k] = 0
     return fill_na_dict
 
 
@@ -407,26 +207,28 @@ fba_fill_na_dict = create_fill_na_dict(flow_by_activity_fields)
 fbs_fill_na_dict = create_fill_na_dict(flow_by_sector_fields)
 fbs_collapsed_fill_na_dict = create_fill_na_dict(flow_by_sector_collapsed_fields)
 fba_default_grouping_fields = get_flow_by_groupby_cols(flow_by_activity_fields)
+fba_mapped_default_grouping_fields = get_flow_by_groupby_cols(flow_by_activity_mapped_fields)
+fba_mapped_wsec_default_grouping_fields = get_flow_by_groupby_cols(flow_by_activity_mapped_wsec_fields)
 fbs_default_grouping_fields = get_flow_by_groupby_cols(flow_by_sector_fields)
 fbs_grouping_fields_w_activities = fbs_default_grouping_fields + \
                                    (['ActivityProducedBy', 'ActivityConsumedBy'])
 fbs_collapsed_default_grouping_fields = get_flow_by_groupby_cols(flow_by_sector_collapsed_fields)
-fba_mapped_default_grouping_fields = get_flow_by_groupby_cols(flow_by_activity_wsec_mapped_fields)
+fba_wsec_default_grouping_fields = get_flow_by_groupby_cols(flow_by_activity_wsec_fields)
 
 
 def read_stored_FIPS(year='2015'):
     """
     Read fips based on year specified, year defaults to 2015
     :param year: str, '2010', '2013', or '2015', default year is 2015
+        because most recent year of FIPS available
     :return: df, FIPS for specified year
     """
 
     FIPS_df = pd.read_csv(datapath + "FIPS_Crosswalk.csv", header=0, dtype=str)
     # subset columns by specified year
     df = FIPS_df[["State", "FIPS_" + year, "County_" + year]]
-    # rename columns
-    cols = ['State', 'FIPS', 'County']
-    df.columns = cols
+    # rename columns to drop data year
+    df.columns = ['State', 'FIPS', 'County']
     # sort df
     df = df.sort_values(['FIPS']).reset_index(drop=True)
 
@@ -443,6 +245,9 @@ def getFIPS(state=None, county=None, year='2015'):
     :return: str. A five digit FIPS code
     """
     FIPS_df = read_stored_FIPS(year)
+
+    # default code
+    code = None
 
     if county is None:
         if state is not None:
@@ -632,7 +437,7 @@ us_state_abbrev = {
 }
 
 # thank you to @kinghelix and @trevormarburger for this idea
-abbrev_us_state = dict(map(reversed, us_state_abbrev.items()))
+abbrev_us_state = {abbr: state for state, abbr in us_state_abbrev.items()}
 
 
 def get_region_and_division_codes():
@@ -681,9 +486,7 @@ def call_country_code(country):
     :param country: str, name of country
     :return: str, ISO code
     """
-    country_info = pycountry.countries.get(name=country)
-    country_numeric_iso = country_info.numeric
-    return country_numeric_iso
+    return pycountry.countries.get(name=country).numeric
 
 
 def convert_fba_unit(df):
@@ -743,21 +546,23 @@ def convert_fba_unit(df):
     return df
 
 
-def set_fb_meta(name_data, category):
+def find_true_file_path(filedirectory, filename, extension):
     """
-    Create meta data for a parquet
-    :param name_data: name of df
-    :param category: 'FlowBySector' or 'FlowByActivity'
-    :return: metadata for parquet
+    If filename does not match filename within flowsa due to added extensions
+    onto the filename, cycle through
+    name, dropping strings after each underscore until the name is found
+    :param filedirectory: string, path to directory
+    :param filename: string, name of original file searching for
+    :param extension: string, type of file, such as "yaml" or "py"
+    :return: string, corrected file path name
     """
-    fb_meta = FileMeta()
-    fb_meta.name_data = name_data
-    fb_meta.tool = pkg.project_name
-    fb_meta.tool_version = pkg_version_number
-    fb_meta.category = category
-    fb_meta.ext = write_format
-    fb_meta.git_hash = git_hash
-    return fb_meta
+
+    # if a file does not exist modify file name, dropping ext after last underscore
+    while os.path.exists(f"{filedirectory}{filename}.{extension}") is False:
+        # continue dropping last underscore/extension until file name does exist
+        filename = filename.rsplit("_", 1)[0]
+
+    return filename
 
 
 def rename_log_file(filename, fb_meta):
@@ -768,7 +573,7 @@ def rename_log_file(filename, fb_meta):
     :param fb_type: str, 'FlowByActivity' or 'FlowBySector'
     :return: modified log file name
     """
-    # original log file name
+    # original log file name - all log statements
     log_file = f'{logoutputpath}{"flowsa.log"}'
     # generate new log name
     new_log_name = f'{logoutputpath}{filename}{"_v"}' \
@@ -777,4 +582,21 @@ def rename_log_file(filename, fb_meta):
     create_paths_if_missing(logoutputpath)
     # rename the standard log file name (os.rename throws error if file already exists)
     shutil.copy(log_file, new_log_name)
-    return None
+    # original log file name - validation
+    log_file = f'{logoutputpath}{"validation_flowsa.log"}'
+    # generate new log name
+    new_log_name = f'{logoutputpath}{filename}_v' \
+                   f'{fb_meta.tool_version}_{fb_meta.git_hash}_validation.log'
+    # create log directory if missing
+    create_paths_if_missing(logoutputpath)
+    # rename the standard log file name (os.rename throws error if file already exists)
+    shutil.copy(log_file, new_log_name)
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    else:
+        return False

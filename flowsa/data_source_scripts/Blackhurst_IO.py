@@ -11,29 +11,25 @@ import io
 import tabula
 import pandas as pd
 import numpy as np
-import flowsa
-from flowsa.common import US_FIPS, flow_by_activity_fields, fba_fill_na_dict
+from flowsa.common import US_FIPS
 from flowsa.flowbyfunctions import assign_fips_location_system, \
-    proportional_allocation_by_location_and_activity, filter_by_geoscale
-from flowsa.dataclean import harmonize_units, clean_df
-from flowsa.mapping import add_sectors_to_flowbyactivity
+    load_fba_w_standardized_units
+from flowsa.allocation import proportional_allocation_by_location_and_activity
+from flowsa.sectormapping import add_sectors_to_flowbyactivity
 from flowsa.data_source_scripts.BLS_QCEW import clean_bls_qcew_fba
+from flowsa.validation import compare_df_units
 
 
 # Read pdf into list of DataFrame
-def bh_call(**kwargs):
+def bh_call(url, response_load, args):
     """
     Convert response for calling url to pandas dataframe, begin parsing df into FBA format
-    :param kwargs: potential arguments include:
-                   url: string, url
-                   response_load: df, response from url call
-                   args: dictionary, arguments specified when running
-                   flowbyactivity.py ('year' and 'source')
+    :param kwargs: url: string, url
+    :param kwargs: response_load: df, response from url call
+    :param kwargs: args: dictionary, arguments specified when running
+        flowbyactivity.py ('year' and 'source')
     :return: pandas dataframe of original source data
     """
-    # load arguments necessary for function
-    response_load = kwargs['r']
-
     pages = range(5, 13)
     bh_df_list = []
     for x in pages:
@@ -45,17 +41,13 @@ def bh_call(**kwargs):
     return bh_df
 
 
-def bh_parse(**kwargs):
+def bh_parse(dataframe_list, args):
     """
     Combine, parse, and format the provided dataframes
-    :param kwargs: potential arguments include:
-                   dataframe_list: list of dataframes to concat and format
-                   args: dictionary, used to run flowbyactivity.py ('year' and 'source')
+    :param dataframe_list: list of dataframes to concat and format
+    :param args: dictionary, used to run flowbyactivity.py ('year' and 'source')
     :return: df, parsed and partially formatted to flowbyactivity specifications
     """
-    # load arguments necessary for function
-    dataframe_list = kwargs['dataframe_list']
-
     # concat list of dataframes (info on each page)
     df = pd.concat(dataframe_list, sort=False)
     df = df.rename(columns={"I-O code": "ActivityConsumedBy",
@@ -77,24 +69,26 @@ def bh_parse(**kwargs):
     return df
 
 
-def convert_blackhurst_data_to_gal_per_year(df, attr):
+def convert_blackhurst_data_to_gal_per_year(df, **kwargs):
     """
     Load BEA Make After Redefinition data to convert Blackhurst IO dataframe units
     to gallon per year
     :param df: df, FBA format
-    :param attr: dictionary, attribute data from method yaml for activity set
+    :param kwargs: kwargs includes "attr" - dictionary, attribute
+    data from method yaml for activity set
     :return: transformed fba df
     """
 
     # load the bea make table
-    bmt = flowsa.getFlowByActivity(datasource='BEA_Make_AR',
-                                   year=2002, flowclass='Money')
-    # clean df
-    bmt = clean_df(bmt, flow_by_activity_fields, fba_fill_na_dict)
-    bmt = harmonize_units(bmt)
+    bmt = load_fba_w_standardized_units(datasource='BEA_Make_AR',
+                                        year=kwargs['attr']['allocation_source_year'],
+                                        flowclass='Money',
+                                        download_FBA_if_missing=kwargs['download_FBA_if_missing'])
     # drop rows with flowamount = 0
     bmt = bmt[bmt['FlowAmount'] != 0]
 
+    # check on units of dfs before merge
+    compare_df_units(df, bmt)
     bh_df_revised = pd.merge(df, bmt[['FlowAmount', 'ActivityProducedBy', 'Location']],
                              left_on=['ActivityConsumedBy', 'Location'],
                              right_on=['ActivityProducedBy', 'Location']
@@ -112,7 +106,7 @@ def convert_blackhurst_data_to_gal_per_year(df, attr):
     return bh_df_revised
 
 
-def convert_blackhurst_data_to_gal_per_employee(df_wsec, attr, method):
+def convert_blackhurst_data_to_gal_per_employee(df_wsec, attr, method, **kwargs):
     """
     Load BLS employment data and use to transform original units to gallons per employee
     :param df_wsec: df, includes sector columns
@@ -122,13 +116,11 @@ def convert_blackhurst_data_to_gal_per_employee(df_wsec, attr, method):
     """
 
     # load 2002 employment data
-    bls = flowsa.getFlowByActivity(datasource='BLS_QCEW', year=2002, flowclass='Employment')
-
-    bls = filter_by_geoscale(bls, 'national')
+    bls = load_fba_w_standardized_units(datasource='BLS_QCEW', year='2002',
+                                        flowclass='Employment', geographic_level='national',
+                                        download_FBA_if_missing=kwargs['download_FBA_if_missing'])
 
     # clean df
-    bls = clean_df(bls, flow_by_activity_fields, fba_fill_na_dict)
-    bls = harmonize_units(bls)
     bls = clean_bls_qcew_fba(bls, attr=attr)
 
     # assign naics to allocation dataset
@@ -138,6 +130,8 @@ def convert_blackhurst_data_to_gal_per_employee(df_wsec, attr, method):
     bls_wsec = bls_wsec.rename(columns={'SectorProducedBy': 'Sector',
                                         'FlowAmount': 'HelperFlow'})
 
+    # check units before merge
+    compare_df_units(df_wsec, bls_wsec)
     # merge the two dfs
     df = pd.merge(df_wsec,
                   bls_wsec[['Location', 'Sector', 'HelperFlow']],
@@ -169,7 +163,7 @@ def convert_blackhurst_data_to_gal_per_employee(df_wsec, attr, method):
     return df_wratio
 
 
-def scale_blackhurst_results_to_usgs_values(df_to_scale, attr):
+def scale_blackhurst_results_to_usgs_values(df_to_scale, attr, download_FBA_if_missing):
     """
     Scale the initial estimates for Blackhurst-based mining estimates to USGS values.
     Oil-based sectors are allocated a larger percentage of the difference between initial
@@ -182,11 +176,11 @@ def scale_blackhurst_results_to_usgs_values(df_to_scale, attr):
     """
 
     # determine national level published withdrawal data for usgs mining in FBS method year
-    pv_load = flowsa.getFlowByActivity(datasource="USGS_NWIS_WU",
-                                       year=str(attr['helper_source_year']),
-                                       flowclass='Water'
-                                       )
-    pv_load = harmonize_units(pv_load)
+    pv_load = load_fba_w_standardized_units(datasource="USGS_NWIS_WU",
+                                            year=str(attr['helper_source_year']),
+                                            flowclass='Water',
+                                            download_FBA_if_missing=download_FBA_if_missing)
+
     pv_sub = pv_load[(pv_load['Location'] == str(US_FIPS)) &
                      (pv_load['ActivityConsumedBy'] == 'Mining')].reset_index(drop=True)
     pv = pv_sub['FlowAmount'].loc[0] * 1000000  # usgs unit is Mgal, blackhurst unit is gal
