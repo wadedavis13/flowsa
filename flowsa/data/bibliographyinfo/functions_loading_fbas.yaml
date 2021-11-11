@@ -1,4 +1,4 @@
-assign_nonpoint_dqi:
+generate_nonpoint_data_collection_scores:
   flowbyactivity_1:
     source: Census_CBP
     year:

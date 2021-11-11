@@ -8,6 +8,9 @@ Pulls EPA National Emissions Inventory (NEI) data for nonpoint sources
 import io
 import zipfile
 import pandas as pd
+import numpy as np
+from esupy.dqi import apply_dqi_to_series
+import flowsa
 from flowsa.flowbyfunctions import assign_fips_location_system
 from flowsa.common import convert_fba_unit
 
@@ -181,22 +184,30 @@ def epa_nei_nonpoint_parse(dataframe_list, args):
     return df
 
 
-def assign_nonpoint_dqi(args):
+def generate_nonpoint_data_collection_scores(year):
     """
     Compares facility coverage data between NEI point and Census to estimate
     facility coverage in NEI nonpoint
-    :param args:
-    :return:
+    :param year:
+    :return: df with DataCollection scores by NAICS
     """
     import stewi
-    import flowsa
-    nei_facility_list = stewi.getInventoryFacilities('NEI', args['year'])
-    nei_count = nei_facility_list.groupby('NAICS')['FacilityID'].count()
-    census = flowsa.getFlowByActivity(datasource="Census_CBP", year=args['year'], flowclass='Other')
+    nei_facility_list = stewi.getInventoryFacilities('NEI', year)
+    nei_count = nei_facility_list.groupby('NAICS')[
+        'FacilityID'].count().rename("NEI").to_frame()
+    census = flowsa.getFlowByActivity("Census_CBP", year)
     census = census[census['FlowName'] == 'Number of establishments']
-    census_count = census.groupby('ActivityProducedBy')['FlowAmount'].sum()
+    census_count = census.groupby('ActivityProducedBy')[
+        'FlowAmount'].sum().rename("Census").to_frame()
 
-    # TODO compare counts across NAICS depending on granularity of fbs method
+    # Compare counts across NAICS
+    dqi = pd.merge(nei_count, census_count, how='outer',
+                   left_index=True, right_index=True)
+    dqi['DataCollection'] = apply_dqi_to_series(np.minimum(
+        dqi['NEI'] / dqi['Census'], 1), 'DataCollection')
+    dqi.dropna(subset=['NEI'], inplace=True)
+    dqi.drop(columns=['NEI', 'Census'], inplace=True)
+    return dqi
 
 
 def clean_NEI_fba(fba):
