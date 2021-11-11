@@ -336,6 +336,7 @@ def prepare_stewi_fbs(df, inventory_dict, NAICS_level, geo_scale):
     fbs_mapped['Class'] = 'Chemicals'
     fbs_mapped['SectorConsumedBy'] = 'None'
     fbs_mapped['SectorSourceName'] = 'NAICS_2012_Code'
+    fbs_mapped['DataCollection'] = 1
 
     fbs_mapped = assign_fips_location_system(fbs_mapped, list(inventory_dict.values())[0])
 
