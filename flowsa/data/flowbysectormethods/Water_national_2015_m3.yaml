@@ -21,34 +21,34 @@ source_names:
       activity_set_2:
         names:
           - "Thermoelectric Power"
-        allocation_method: proportional
         allocation_source:
           "NETL_EIA_PlantWater":
+            allocation_method: proportional
             class: "Water"
             year: 2015
-            flows:
+            flow:
               - 'Fresh Water Withdrawal'
               - 'Saline Water Withdrawal'
               - 'Brackish Water Withdrawal'
-          compartment:
+            compartment:
               - 'Surface'
               - 'Ground'
-          geographic_scale: national
-          clean_allocation_fba: clean_plantwater_fba
-          allocation_map_to_flow_list: True
-          merge_columns:
+            geographic_scale: national
+            clean_allocation_fba: clean_plantwater_fba
+            allocation_map_to_flow_list: True
+            merge_columns:
               - 'Context'
               - 'Flowable'
       activity_set_3:
         names:
           - "Industrial"
           - "Mining"
-        allocation_method: proportional
         allocation_source:
           "BLS_QCEW":
+            allocation_method: proportional
             class: "Employment"
             year: 2015
-            flows:
+            flow:
               - "Number of employees"
             geographic_scale: national
             clean_allocation_fba: clean_bls_qcew_fba
@@ -56,12 +56,12 @@ source_names:
       activity_set_4:
         names:
           - "Irrigation Crop"
-        allocation_method: proportional
         allocation_source:
           "USDA_CoA_Cropland":
+            allocation_method: proportional
             class: "Land"
             year: 2017
-            flows:
+            flow:
               - "AREA HARVESTED, IRRIGATED"
               - "AREA IN PRODUCTION, IRRIGATED"
               - "AREA, IRRIGATED"
@@ -69,31 +69,42 @@ source_names:
               - 'AREA GROWN, IRRIGATED'
             geographic_scale: state
             clean_allocation_fba: coa_irrigated_cropland_fba_cleanup
-            clean_allocation_fba_w_sec: disaggregate_coa_cropland_to_6_digit_naics
-            allocation_method: multiplication
+#            clean_allocation_fba_w_sec: disaggregate_coa_cropland_to_6_digit_naics
             allocation_source:
+              "USDA_CoA_Cropland_NAICS":
+                allocation_method: disaggregation
+                year: 2017 # check
+                class: "Land"
+                parameter:
+                  "112":
+                    flow:
+                    - "FARM OPERATIONS"
+                  "111":
+                    flow:
+                      - "AG LAND, CROPLAND, HARVESTED"
               "USDA_IWMS":
+                allocation_method: multiplication
                 class: "Water"
                 year: 2018
                 geographic_scale: state
       activity_set_5:
         names:
           - "Livestock"
-        allocation_method: proportional
         allocation_source:
           "USDA_CoA_Livestock":
+            allocation_method: proportional
             class: "Other"
             year: 2017
-            flows:
+            flow:
               - "HEAD"
               - "NUMBER"
               - "COLONIES"
-            compartments:
+            compartment:
               - "NOT SPECIFIED"
             geographic_scale: state
-            allocation_method: multiplication
             allocation_source:
               "USGS_WU_Coef":
+                allocation_method: multiplication
                 class: "Water"
                 year: 2005
                 geographic_scale: national
