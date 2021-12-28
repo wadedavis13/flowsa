@@ -71,8 +71,8 @@ def load_crosswalk(crosswalk_name):
     :return: df, NAICS crosswalk over the years
     """
 
-    cw_dict = {'sector': 'NAICS_Crosswalk',
-               'sector length': 'NAICS_2012_Crosswalk',
+    cw_dict = {'sector_timeseries': 'NAICS_Crosswalk_TimeSeries',
+               'sector_length': 'NAICS_2012_Crosswalk',
                'household': 'Household_SectorCodes',
                'government': 'Government_SectorCodes',
                'BEA': 'NAICS_to_BEA_Crosswalk'
@@ -82,6 +82,21 @@ def load_crosswalk(crosswalk_name):
 
     cw = pd.read_csv(f'{datapath}{fn}.csv', dtype="str")
     return cw
+
+
+def return_bea_codes_used_as_naics():
+    """
+
+    :return: list of BEA codes used as NAICS
+    """
+    cw_list = []
+    for cw in ['household', 'government']:
+        df = load_crosswalk(cw)
+        cw_list.append(df)
+    # concat data into single dataframe
+    cw = pd.concat(cw_list, sort=False)
+    code_list = cw['Code'].drop_duplicates().values.tolist()
+    return code_list
 
 
 def load_yaml_dict(filename, flowbytype=None):
@@ -638,6 +653,32 @@ def rename_log_file(filename, fb_meta):
     # rename the standard log file name (os.rename throws error if file
     # already exists)
     shutil.copy(log_file, new_log_name)
+
+
+def return_true_source_catalog_name(sourcename):
+    """
+    Drop any extensions on source name until find the name in source catalog
+    """
+    while (load_yaml_dict('source_catalog').get(sourcename) is None) & ('_' in sourcename):
+        sourcename = sourcename.rsplit("_", 1)[0]
+    return sourcename
+
+
+def check_activities_sector_like(sourcename_load):
+    """
+    Check if the activities in a df are sector-like,
+    if cannot find the sourcename in the source catalog, drop extensions on the
+    source name
+    """
+    sourcename = return_true_source_catalog_name(sourcename_load)
+
+    try:
+        sectorLike = load_yaml_dict('source_catalog')[sourcename]['sector-like_activities']
+    except KeyError:
+        log.error(f'%s or %s not found in {datapath}source_catalog.yaml',
+                  sourcename_load, sourcename)
+
+    return sectorLike
 
 
 def str2bool(v):
