@@ -20,7 +20,7 @@ from flowsa.schema import flow_by_activity_fields, flow_by_sector_fields, \
     flow_by_activity_wsec_fields, flow_by_activity_mapped_wsec_fields, \
     activity_fields
 from flowsa.settings import datapath, MODULEPATH, logoutputpath, \
-    sourceconfigpath, log
+    sourceconfigpath, log, flowbysectormethodpath
 
 
 # Sets default Sector Source Name
@@ -84,17 +84,47 @@ def load_crosswalk(crosswalk_name):
     return cw
 
 
-def load_yaml_dict(filename):
+def load_yaml_dict(filename, flowbytype=None):
     """
     Load the information in 'source_catalog.yaml'
     :return: dictionary containing all information in source_catalog.yaml
     """
     if filename == 'source_catalog':
-        yaml_load = f'{datapath}source_catalog.yaml'
+        folder = datapath
     else:
-        yaml_load = sourceconfigpath + filename + '.yaml'
-    with open(yaml_load, 'r') as f:
-        config = yaml.safe_load(f)
+        if flowbytype == 'FBA':
+            folder = sourceconfigpath
+        elif flowbytype == 'FBS':
+            folder = flowbysectormethodpath
+        else:
+            raise KeyError('Must specify either \'FBA\' or \'FBS\'')
+    yaml_path = folder + filename + '.yaml'
+
+    try:
+        with open(yaml_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except IOError:
+        log.error('%s method file not found', flowbytype)
+
+    # Allow for .yaml files to recursively inherit other .yaml files. Keys in
+    # children will overwrite the same key from a parent.
+    inherits = config.get('inherits_from')
+    while inherits:
+        yaml_path = folder + inherits + '.yaml'
+        with open(yaml_path, 'r') as f:
+            parent = yaml.safe_load(f)
+
+        # Check for common keys and log a warning if any are found
+        common_keys = [k for k in config if k in parent]
+        if common_keys:
+            log.warning(f'Keys {common_keys} from parent file {yaml_path} '
+                        f'were overwritten by child file.')
+
+        # Update inheritance information before updating the parent dict
+        inherits = parent.get('inherits_from')
+        parent.update(config)
+        config = parent
+
     return config
 
 
