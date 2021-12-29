@@ -132,19 +132,17 @@ def load_clean_allocation_fba(df_to_modify, alloc_method, alloc_config,
         fba_allocation_wsec, primary_source, names,
         flowSubsetMapped=df_to_modify, allocMethod=alloc_method)
 
-    # generalize activity field names to enable link to main fba source
-    log.info('Generalizing activity columns')
-    fba_allocation_wsec_sub2 = collapse_activity_fields(
-        fba_allocation_wsec_sub)
-
-    # rename column
-    fba_allocation_wsec_sub2 = fba_allocation_wsec_sub2.rename(
-        columns={"FlowAmount": 'HelperFlow'})
-
-    return fba_allocation_wsec_sub2
+    return fba_allocation_wsec_sub
 
 
 def merge_fbas_by_geoscale(df1, df1_geoscale, df2, df2_geoscale):
+
+
+    # generalize activity field names to enable link to main fba source
+    log.info('Generalizing activity columns')
+    df2 = collapse_activity_fields(df2)
+    # rename column
+    df2 = df2.rename(columns={"FlowAmount": 'HelperFlow'})
 
     sector_col_to_merge = return_primary_sector_column(df1)
     # check df units
