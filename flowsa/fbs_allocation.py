@@ -64,13 +64,14 @@ def direct_allocation_method(fbs, k, names, method):
     return fbs
 
 
-def function_allocation_method(flow_subset_mapped, k, names, attr, fbs_list):
+def function_allocation_method(flow_subset_mapped, primary_source, names,
+                               attr, fbs_list):
     """
     Allocate df activities to sectors using a function identified
     in the FBS method yaml
     :param flow_subset_mapped: df, FBA with flows converted using
         fedelemflowlist
-    :param k: str, source name
+    :param primary_source: str, source name
     :param names: list, activity names in activity set
     :param attr: dictionary, attribute data from method yaml for activity set
     :param fbs_list: list, fbs dfs created running flowbysector.py
@@ -78,8 +79,8 @@ def function_allocation_method(flow_subset_mapped, k, names, attr, fbs_list):
     """
     log.info('Calling on function specified in method yaml to allocate '
              '%s to sectors', ', '.join(map(str, names)))
-    fbs = dynamically_import_fxn(
-        k, attr['allocation_source'])(flow_subset_mapped, attr, fbs_list)
+    fbs = dynamically_import_fxn(primary_source, attr['allocation_source'])(
+        flow_subset_mapped, attr, fbs_list)
     return fbs
 
 
