@@ -17,10 +17,10 @@ source_names:
           - "Public Supply"
           - "Domestic"
         allocation_method: direct
-        geographic_scale: state
       activity_set_2:
         names:
           - "Thermoelectric Power"
+        geographic_scale: national
         allocation_source:
           "NETL_EIA_PlantWater":
             allocation_method: proportional
@@ -43,6 +43,7 @@ source_names:
         names:
           - "Industrial"
           - "Mining"
+        geographic_scale: national
         allocation_source:
           "BLS_QCEW":
             allocation_method: proportional
