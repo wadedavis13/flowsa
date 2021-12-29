@@ -227,11 +227,13 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
 
 def allocate_source_w_secondary_source(df_load, allocation_method):
 
+    # determine sector column with values
+    sector_col = return_primary_sector_column(df_load)
     # modify flow amounts using helper data
     if allocation_method == 'multiplication':
-        df = fba_multiplication(df_load)
+        df = fba_multiplication(df_load, sector_col)
     if allocation_method == 'proportional':
-        df = fba_proportional(df_load)
+        df = fba_proportional(df_load, sector_col)
     if allocation_method == 'proportional-flagged':
         df = fba_proportional_flagged(df_load)
     # option to scale up fba values
@@ -246,16 +248,13 @@ def allocate_source_w_secondary_source(df_load, allocation_method):
     return df3
 
 
-def fba_multiplication(df):
+def fba_multiplication(df_load, sector_col):
     # if missing values (na or 0), replace with national level values
-    replacement_values = df[df['Location'] == US_FIPS].reset_index(
-        drop=True)
-    replacement_values = \
-        replacement_values.rename(
-            columns={"HelperFlow": 'ReplacementValue'})
-    compare_df_units(df, replacement_values)
-    modified_fba_allocation = df.merge(
-        replacement_values[['Sector', 'ReplacementValue']], how='left')
+    replacement_values = df_load[df_load['Location'] == US_FIPS]
+    replacement_values = replacement_values.rename(
+        columns={"HelperFlow": 'ReplacementValue'})
+    modified_fba_allocation = df_load.merge(
+        replacement_values[[sector_col, 'ReplacementValue']], how='left')
     modified_fba_allocation.loc[:, 'HelperFlow'] = \
         modified_fba_allocation['HelperFlow'].fillna(
         modified_fba_allocation['ReplacementValue'])
@@ -272,16 +271,10 @@ def fba_multiplication(df):
     modified_fba_allocation.loc[:, 'FlowAmount'] = \
         modified_fba_allocation['FlowAmount'] * \
         modified_fba_allocation['HelperFlow']
-    # drop columns
-    modified_fba_allocation =\
-        modified_fba_allocation.drop(
-            columns=["HelperFlow", 'ReplacementValue', 'Sector'])
     return modified_fba_allocation
 
 
-def fba_proportional(df_load):
-
-    col_for_alloc_ratios = return_primary_sector_column(df_load)
+def fba_proportional(df_load, col_for_alloc_ratios):
     modified_fba_allocation = proportional_allocation_by_location_and_activity(
             df_load, col_for_alloc_ratios)
     modified_fba_allocation.loc[:, 'FlowAmount'] = \
