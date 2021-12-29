@@ -253,29 +253,29 @@ def main(**kwargs):
                         primary_config["clean_fba_w_sec_fxn"]
                     )(flows_subset_wsec, attr=attr, method=method)
 
-                # rename SourceName to MetaSources and drop columns
-                flows_mapped_wsec = flows_subset_wsec.\
-                    rename(columns={'SourceName': 'MetaSources'}).\
-                    drop(columns=['FlowName', 'Compartment'])
-
                 # if allocation method is "direct", then no need
                 # to create alloc ratios, else need to use allocation
                 # dataframe to create sector allocation ratios
                 if attr['allocation_method'] == 'direct':
                     fbs = direct_allocation_method(
-                        flows_mapped_wsec, primary_source, names, method)
+                        flows_subset_wsec, primary_source, names, method)
                 # if allocation method for an activity set requires a specific
                 # function due to the complicated nature
                 # of the allocation, call on function here
                 elif attr['allocation_method'] == 'allocation_function':
                     fbs = function_allocation_method(
-                        flows_mapped_wsec, primary_source, names, attr,
+                        flows_subset_wsec, primary_source, names, attr,
                         fbs_list)
                 else:
                     fbs = dataset_allocation_method(
-                        flows_mapped_wsec, attr, names, method,
+                        flows_subset_wsec, attr, names, method,
                         primary_source, primary_config, aset, aset_names,
                         download_FBA_if_missing)
+
+                # rename SourceName to MetaSources and drop columns
+                fbs = fbs.rename(
+                    columns={'SourceName': 'MetaSources'}).drop(
+                    columns=['FlowName', 'Compartment'])
 
                 # drop rows where flowamount = 0
                 # (although this includes dropping suppressed data)
