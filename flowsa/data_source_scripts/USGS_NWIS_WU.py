@@ -612,7 +612,7 @@ def usgs_fba_w_sectors_data_cleanup(df_wsec, attr, **kwargs):
     :param df_wsec: an FBA dataframe with sectors
     :param attr: dictionary, attribute data from method yaml for activity set
     :param kwargs: includes "method", a parameter required in other
-        'clean_fba_w_sec_df_fxn' function calls when building a FBS
+        'clean_fba_w_sec_fxn' function calls when building a FBS
     :return: df, FBA modified
     """
 
