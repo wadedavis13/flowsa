@@ -21,7 +21,6 @@ you need functions to clean up the FBA
 """
 
 import argparse
-import yaml
 import pandas as pd
 from esupy.processed_data_mgmt import write_df_to_file
 import flowsa
@@ -32,8 +31,8 @@ from flowsa.common import fips_number_key, check_activities_sector_like, \
     logoutputpath, load_yaml_dict
 from flowsa.schema import flow_by_activity_fields, flow_by_sector_fields, \
     flow_by_sector_fields_w_activity
-from flowsa.settings import log, vLog, flowbysectormethodpath, \
-    flowbysectoractivitysetspath, paths
+from flowsa.settings import log, vLog, paths, \
+    flowbysectoractivitysetspath
 from flowsa.metadata import set_fb_meta, write_metadata
 from flowsa.fbs_allocation import direct_allocation_method, \
     function_allocation_method, dataset_allocation_method
@@ -46,8 +45,8 @@ from flowsa.dataclean import clean_df, harmonize_FBS_columns, \
     reset_fbs_dq_scores
 from flowsa.validation import compare_activity_to_sector_flowamounts, \
     compare_fba_geo_subset_and_fbs_output_totals, compare_geographic_totals,\
-    replace_naics_w_naics_from_another_year, calculate_flowamount_diff_between_dfs, \
-    check_for_negative_flowamounts
+    replace_naics_w_naics_from_another_year, check_for_negative_flowamounts, \
+    calculate_flowamount_diff_between_dfs
 from flowsa.allocation import equally_allocate_parent_to_child_naics
 
 
@@ -194,7 +193,8 @@ def main(**kwargs):
 
                 # subset by flowname if exists
                 if 'source_flows' in attr:
-                    flows_subset = flows_subset[flows_subset['FlowName'].isin(attr['source_flows'])]
+                    flows_subset = flows_subset[
+                        flows_subset['FlowName'].isin(attr['source_flows'])]
                 if len(flows_subset) == 0:
                     log.warning(f"no data found for flows in {aset}")
                     continue
@@ -304,7 +304,8 @@ def main(**kwargs):
                 vLog.info('Searching for and allocating FlowAmounts for any parent '
                           'NAICS that were dropped in the subset to '
                           '%s child NAICS', method['target_sector_level'])
-                fbs_agg_2 = equally_allocate_parent_to_child_naics(fbs_agg, method['target_sector_level'])
+                fbs_agg_2 = equally_allocate_parent_to_child_naics(
+                    fbs_agg, method['target_sector_level'])
 
                 # compare flowbysector with flowbyactivity
                 compare_activity_to_sector_flowamounts(
