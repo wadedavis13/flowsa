@@ -21,9 +21,9 @@ source_names:
         names:
           - "Thermoelectric Power"
         geographic_scale: national
-        allocation_source:
-          "NETL_EIA_PlantWater":
-            allocation_method: proportional
+        allocation_method:
+          proportional:
+            allocation_source: NETL_EIA_PlantWater
             class: "Water"
             year: 2015
             flow:
@@ -57,9 +57,9 @@ source_names:
       activity_set_4:
         names:
           - "Irrigation Crop"
-        allocation_source:
-          "USDA_CoA_Cropland":
-            allocation_method: proportional
+        allocation_method:
+          proportional:
+            allocation_source: "USDA_CoA_Cropland"
             class: "Land"
             year: 2017
             flow:
@@ -71,9 +71,9 @@ source_names:
             geographic_scale: state
             clean_allocation_fba: coa_irrigated_cropland_fba_cleanup
 #            clean_allocation_fba_w_sec: disaggregate_coa_cropland_to_6_digit_naics_for_water_withdrawal
-            allocation_source:
-              "USDA_CoA_Cropland_NAICS":
-                allocation_method: disaggregation
+            allocation_method:
+              disaggregation:
+                allocation_source: "USDA_CoA_Cropland_NAICS"
                 year: 2017 # check
                 class: "Land"
                 parameter:
@@ -83,8 +83,8 @@ source_names:
                   "111":
                     flow:
                       - "AG LAND, CROPLAND, HARVESTED"
-              "USDA_IWMS":
-                allocation_method: multiplication
+              multiplication:
+                allocation_source: USDA_IWMS
                 class: "Water"
                 year: 2018
                 geographic_scale: state
