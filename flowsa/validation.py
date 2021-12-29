@@ -857,14 +857,15 @@ def compare_FBS_results(fbs1_load, fbs2_load, ignore_metasources=False):
 
 
 def compare_geographic_totals(
-        df_subset, df_load, sourcename, attr, activity_set, activity_names):
+        df_subset, df_load, sourcename, activity_geoscale, activity_set,
+        activity_names):
     """
     Check for any data loss between the geoscale used and published
     national data
     :param df_subset: df, after subset by geography
     :param df_load: df, loaded data, including published national data
     :param sourcename: str, source name
-    :param attr: dictionary, attributes
+    :param activity_geoscale: string, scale sub national
     :param activity_set: str, activity set
     :param activity_names: list of names in the activity set by which
            to subset national level data
@@ -910,12 +911,11 @@ def compare_geographic_totals(
 
         if len(df_m_sub) == 0:
             vLog.info('No data loss greater than 1%% between national '
-                      'level data and %s subset',
-                      attr['allocation_from_scale'])
+                      'level data and %s subset', activity_geoscale)
         else:
             vLog.info('There are data differences between published national'
                       ' values and %s subset, saving to validation log',
-                      attr['geographic_scale'])
+                      activity_geoscale)
 
             vLogDetailed.info(
                 'Comparison of National FlowAmounts to aggregated data '

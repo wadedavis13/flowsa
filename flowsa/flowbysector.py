@@ -232,10 +232,10 @@ def main(**kwargs):
                     flows_subset2, primary_config['geographic_scale'],
                     activity_geoscale)
                 # if loading data subnational geoscale, check for data loss
-                if attr['geographic_scale'] != 'national':
+                if activity_geoscale != 'national':
                     compare_geographic_totals(
                         flows_subset_geo, flows_mapped, primary_source,
-                        attr, aset, names)
+                        activity_geoscale, aset, names)
 
                 # Add sectors to df activity, depending on level
                 # of specified sector aggregation
