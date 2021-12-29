@@ -365,28 +365,28 @@ def map_flows(fba, from_fba_source, flow_type='ELEMENTARY_FLOW',
     return mapped_df
 
 
-def map_fbs_flows(fbs, from_fba_source, v, **kwargs):
+def map_fbs_flows(fbs, from_fba_source, primary_config, **kwargs):
     """
     Identifies the mapping file and applies mapping to fbs flows
     :param fbs: flow-by-sector dataframe
     :param from_fba_source: str Source name of fba list to look for mappings
-    :param v: dictionary, The datasource parameters
+    :param primary_config: dictionary, The datasource parameters
     :param kwargs: includes keep_unmapped_columns and keep_fba_columns
     :return fbs_mapped: df, with flows mapped using federal elementary
            flow list or material flow list
     :return mapping_files: str, name of mapping file
     """
     ignore_source_name = False
-    if 'mfl_mapping' in v:
-        mapping_files = v['mfl_mapping']
+    if 'mfl_mapping' in primary_config:
+        mapping_files = primary_config['mfl_mapping']
         log.info("Mapping flows in %s to material flow list", from_fba_source)
         flow_type = 'WASTE_FLOW'
         ignore_source_name = True
     else:
         log.info("Mapping flows in %s to federal elementary flow list",
                  from_fba_source)
-        if 'fedefl_mapping' in v:
-            mapping_files = v['fedefl_mapping']
+        if 'fedefl_mapping' in primary_config:
+            mapping_files = primary_config['fedefl_mapping']
             ignore_source_name = True
         else:
             mapping_files = from_fba_source

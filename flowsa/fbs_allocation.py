@@ -81,7 +81,8 @@ def function_allocation_method(flow_subset_mapped, k, names, attr, fbs_list):
 
 
 def dataset_allocation_method(flow_subset_mapped, attr, names, method,
-                              k, v, aset, aset_names, download_FBA_if_missing):
+                              primary_source, primary_config, aset,
+                              aset_names, download_FBA_if_missing):
     """
     Method of allocation using a specified data source
     :param flow_subset_mapped: FBA subset mapped using federal
@@ -89,8 +90,8 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     :param attr: dictionary, attribute data from method yaml for activity set
     :param names: list, activity names in activity set
     :param method: dictionary, FBS method yaml
-    :param k: str, the datasource name
-    :param v: dictionary, the datasource parameters
+    :param primary_source: str, the datasource name
+    :param primary_config: dictionary, the datasource parameters
     :param aset: dictionary items for FBS method yaml
     :param aset_names: list, activity set names
     :param download_FBA_if_missing: bool, indicate if missing FBAs
@@ -118,15 +119,16 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
                            df_year=attr['allocation_source_year'],
                            flowclass=attr['allocation_source_class'],
                            geoscale_from=attr['allocation_from_scale'],
-                           geoscale_to=v['geoscale_to_use'],
+                           geoscale_to=primary_config['geoscale_to_use'],
                            download_FBA_if_missing=download_FBA_if_missing,
                            **fba_dict)
 
     # subset fba datasets to only keep the sectors associated
     # with activity subset
-    log.info("Subsetting %s for sectors in %s", attr['allocation_source'], k)
+    log.info("Subsetting %s for sectors in %s", attr['allocation_source'],
+             primary_source)
     fba_allocation_subset = \
-        get_fba_allocation_subset(fba_allocation_wsec, k, names,
+        get_fba_allocation_subset(fba_allocation_wsec, primary_source, names,
                                   flowSubsetMapped=flow_subset_mapped,
                                   allocMethod=attr['allocation_method'])
 
@@ -135,7 +137,8 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
         log.info("Using the specified allocation help for subset of %s",
                  attr['allocation_source'])
         fba_allocation_subset = \
-            allocation_helper(fba_allocation_subset, attr, method, v,
+            allocation_helper(fba_allocation_subset, attr, method,
+                              primary_config,
                               download_FBA_if_missing=download_FBA_if_missing)
 
     # create flow allocation ratios for each activity
@@ -158,8 +161,8 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
               (fba_allocation_subset[fba_activity_fields[1]].isin(n_allocated))
               )].reset_index(drop=True)
         fba_allocation_subset_2 = \
-            get_fba_allocation_subset(fba_allocation_subset, k, [n],
-                                      flowSubsetMapped=flow_subset_mapped,
+            get_fba_allocation_subset(fba_allocation_subset, primary_source,
+                                      [n], flowSubsetMapped=flow_subset_mapped,
                                       allocMethod=attr['allocation_method'],
                                       activity_set_names=aset_names)
         if len(fba_allocation_subset_2) == 0:
@@ -198,7 +201,8 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     check_if_location_systems_match(flow_subset_mapped, flow_allocation)
 
     # merge fba df w/flow allocation dataset
-    log.info("Merge %s and subset of %s", k, attr['allocation_source'])
+    log.info("Merge %s and subset of %s", primary_source,
+             attr['allocation_source'])
     for i, j in activity_fields.items():
         # check units
         compare_df_units(flow_subset_mapped, flow_allocation)
@@ -244,13 +248,14 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     return fbs
 
 
-def allocation_helper(df_w_sector, attr, method, v, download_FBA_if_missing):
+def allocation_helper(df_w_sector, attr, method, primary_config,
+                      download_FBA_if_missing):
     """
     Function to help allocate activity names using secondary df
     :param df_w_sector: df, includes sector columns
     :param attr: dictionary, attribute data from method yaml for activity set
     :param method: dictionary, FBS method yaml
-    :param v: dictionary, the datasource parameters
+    :param primary_config: dictionary, the datasource parameters
     :param download_FBA_if_missing: bool, indicate if missing FBAs
        should be downloaded from Data Commons or run locally
     :return: df, with modified fba allocation values
@@ -272,7 +277,7 @@ def allocation_helper(df_w_sector, attr, method, v, download_FBA_if_missing):
                            df_year=attr['helper_source_year'],
                            flowclass=attr['helper_source_class'],
                            geoscale_from=attr['helper_from_scale'],
-                           geoscale_to=v['geoscale_to_use'],
+                           geoscale_to=primary_config['geoscale_to_use'],
                            download_FBA_if_missing=download_FBA_if_missing,
                            **fba_dict)
 
