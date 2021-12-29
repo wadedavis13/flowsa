@@ -219,9 +219,9 @@ def main(**kwargs):
                 # extract relevant geoscale data or aggregate existing data
                 flows_subset_geo = subset_df_by_geoscale(
                     flows_subset2, v['geoscale_to_use'],
-                    attr['allocation_from_scale'])
+                    attr['geographic_scale'])
                 # if loading data subnational geoscale, check for data loss
-                if attr['allocation_from_scale'] != 'national':
+                if attr['geographic_scale'] != 'national':
                     compare_geographic_totals(
                         flows_subset_geo, flows_mapped, k, attr, aset, names)
 
@@ -283,10 +283,10 @@ def main(**kwargs):
                          method['target_geoscale'])
                 # determine from scale
                 if fips_number_key[v['geoscale_to_use']] <\
-                        fips_number_key[attr['allocation_from_scale']]:
+                        fips_number_key[attr['geographic_scale']]:
                     from_scale = v['geoscale_to_use']
                 else:
-                    from_scale = attr['allocation_from_scale']
+                    from_scale = attr['geographic_scale']
 
                 fbs_geo_agg = agg_by_geoscale(
                     fbs, from_scale, method['target_geoscale'], groupingcols)

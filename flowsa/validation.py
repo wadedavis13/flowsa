@@ -451,10 +451,10 @@ def compare_fba_geo_subset_and_fbs_output_totals(
 
     # determine from scale
     if fips_number_key[source_attr['geoscale_to_use']] < \
-            fips_number_key[activity_attr['allocation_from_scale']]:
+            fips_number_key[activity_attr['geographic_scale']]:
         from_scale = source_attr['geoscale_to_use']
     else:
-        from_scale = activity_attr['allocation_from_scale']
+        from_scale = activity_attr['geographic_scale']
 
     # extract relevant geoscale data or aggregate existing data
     fba = subset_df_by_geoscale(fba_load, from_scale,
@@ -915,7 +915,7 @@ def compare_geographic_totals(
         else:
             vLog.info('There are data differences between published national'
                       ' values and %s subset, saving to validation log',
-                      attr['allocation_from_scale'])
+                      attr['geographic_scale'])
 
             vLogDetailed.info(
                 'Comparison of National FlowAmounts to aggregated data '
