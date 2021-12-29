@@ -222,9 +222,15 @@ def main(**kwargs):
                     flows_subset2 = flows_subset.copy()
 
                 # extract relevant geoscale data or aggregate existing data
+                # look for an overwrite to the primary source data geoscale
+                # to use
+                if 'geographic_scale' in attr:
+                    activity_geoscale = attr.get('geographic_scale')
+                else:
+                    activity_geoscale = primary_config['geographic_scale']
                 flows_subset_geo = subset_df_by_geoscale(
                     flows_subset2, primary_config['geographic_scale'],
-                    attr['geographic_scale'])
+                    activity_geoscale)
                 # if loading data subnational geoscale, check for data loss
                 if attr['geographic_scale'] != 'national':
                     compare_geographic_totals(
