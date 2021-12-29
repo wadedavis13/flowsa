@@ -153,7 +153,7 @@ def main(**kwargs):
 
             # clean up fba, if specified in yaml
             if "clean_fba_df_fxn" in primary_config:
-                vLog.info("Cleaning up %s FlowByActivity", k)
+                vLog.info("Cleaning up %s FlowByActivity", primary_source)
                 flows_mapped = dynamically_import_fxn(
                     primary_source,
                     primary_config["clean_fba_df_fxn"])(flows_mapped)
