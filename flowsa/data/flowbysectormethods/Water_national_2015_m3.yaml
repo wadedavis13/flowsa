@@ -7,16 +7,16 @@ source_names:
     class: Water
     geographic_scale: state
     year: 2015
-    clean_fba_df_fxn: usgs_fba_data_cleanup
-    clean_fba_w_sec_df_fxn: usgs_fba_w_sectors_data_cleanup
+    clean_fba_fxn: usgs_fba_data_cleanup
+    clean_fba_w_sec_fxn: usgs_fba_w_sectors_data_cleanup
     activity_sets:
-      activity_set_1:
-        names:
-          - "Aquaculture"
-          - "Irrigation Golf Courses"
-          - "Public Supply"
-          - "Domestic"
-        allocation_method: direct
+#      activity_set_1:
+#        names:
+#          - "Aquaculture"
+#          - "Irrigation Golf Courses"
+#          - "Public Supply"
+#          - "Domestic"
+#        allocation_method: direct
       activity_set_2:
         names:
           - "Thermoelectric Power"
@@ -34,79 +34,79 @@ source_names:
               - 'Surface'
               - 'Ground'
             geographic_scale: national
-            clean_allocation_fba: clean_plantwater_fba
+            clean_fba_fxn: clean_plantwater_fba
             allocation_map_to_flow_list: True
             merge_columns:
               - 'Context'
               - 'Flowable'
-      activity_set_3:
-        names:
-          - "Industrial"
-          - "Mining"
-        geographic_scale: national
-        allocation_source:
-          "BLS_QCEW":
-            allocation_method: proportional
-            class: "Employment"
-            year: 2015
-            flow:
-              - "Number of employees"
-            geographic_scale: national
-            clean_allocation_fba: clean_bls_qcew_fba
-            clean_allocation_fba_w_sec: bls_clean_allocation_fba_w_sec
-      activity_set_4:
-        names:
-          - "Irrigation Crop"
-        allocation_method:
-          proportional:
-            allocation_source: "USDA_CoA_Cropland"
-            class: "Land"
-            year: 2017
-            flow:
-              - "AREA HARVESTED, IRRIGATED"
-              - "AREA IN PRODUCTION, IRRIGATED"
-              - "AREA, IRRIGATED"
-              - 'AREA BEARING & NON-BEARING, IRRIGATED'
-              - 'AREA GROWN, IRRIGATED'
-            geographic_scale: state
-            clean_allocation_fba: coa_irrigated_cropland_fba_cleanup
-#            clean_allocation_fba_w_sec: disaggregate_coa_cropland_to_6_digit_naics_for_water_withdrawal
-            allocation_method:
-              disaggregation:
-                allocation_source: "USDA_CoA_Cropland_NAICS"
-                year: 2017 # check
-                class: "Land"
-                parameter:
-                  "112":
-                    flow:
-                    - "FARM OPERATIONS"
-                  "111":
-                    flow:
-                      - "AG LAND, CROPLAND, HARVESTED"
-              multiplication:
-                allocation_source: USDA_IWMS
-                class: "Water"
-                year: 2018
-                geographic_scale: state
-        clean_helper_fba_wsec: iwms_aggregation
-      activity_set_5:
-        names:
-          - "Livestock"
-        allocation_source:
-          "USDA_CoA_Livestock":
-            allocation_method: proportional
-            class: "Other"
-            year: 2017
-            flow:
-              - "HEAD"
-              - "NUMBER"
-              - "COLONIES"
-            compartment:
-              - "NOT SPECIFIED"
-            geographic_scale: state
-            allocation_source:
-              "USGS_WU_Coef":
-                allocation_method: multiplication
-                class: "Water"
-                year: 2005
-                geographic_scale: national
+#      activity_set_3:
+#        names:
+#          - "Industrial"
+#          - "Mining"
+#        geographic_scale: national
+#        allocation_source:
+#          "BLS_QCEW":
+#            allocation_method: proportional
+#            class: "Employment"
+#            year: 2015
+#            flow:
+#              - "Number of employees"
+#            geographic_scale: national
+#            clean_fba_fxn: clean_bls_qcew_fba
+#            clean_fba_w_sec_fxn: bls_clean_allocation_fba_w_sec
+#      activity_set_4:
+#        names:
+#          - "Irrigation Crop"
+#        allocation_method:
+#          proportional:
+#            allocation_source: "USDA_CoA_Cropland"
+#            class: "Land"
+#            year: 2017
+#            flow:
+#              - "AREA HARVESTED, IRRIGATED"
+#              - "AREA IN PRODUCTION, IRRIGATED"
+#              - "AREA, IRRIGATED"
+#              - 'AREA BEARING & NON-BEARING, IRRIGATED'
+#              - 'AREA GROWN, IRRIGATED'
+#            geographic_scale: state
+#            clean_allocation_fba: coa_irrigated_cropland_fba_cleanup
+##            clean_allocation_fba_w_sec: disaggregate_coa_cropland_to_6_digit_naics_for_water_withdrawal
+#            allocation_method:
+#              disaggregation:
+#                allocation_source: "USDA_CoA_Cropland_NAICS"
+#                year: 2017 # check
+#                class: "Land"
+#                parameter:
+#                  "112":
+#                    flow:
+#                    - "FARM OPERATIONS"
+#                  "111":
+#                    flow:
+#                      - "AG LAND, CROPLAND, HARVESTED"
+#              multiplication:
+#                allocation_source: USDA_IWMS
+#                class: "Water"
+#                year: 2018
+#                geographic_scale: state
+#                clean_helper_fba_wsec: iwms_aggregation
+#      activity_set_5:
+#        names:
+#          - "Livestock"
+#        allocation_source:
+#          "USDA_CoA_Livestock":
+#            allocation_method: proportional
+#            class: "Other"
+#            year: 2017
+#            flow:
+#              - "HEAD"
+#              - "NUMBER"
+#              - "COLONIES"
+#            compartment:
+#              - "NOT SPECIFIED"
+#            geographic_scale: state
+#            allocation_source:
+#              "USGS_WU_Coef":
+#                allocation_method: multiplication
+#                class: "Water"
+#                year: 2005
+#                geographic_scale: national

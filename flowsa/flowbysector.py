@@ -151,11 +151,11 @@ def main(**kwargs):
                               keep_fba_columns=True)
 
             # clean up fba, if specified in yaml
-            if "clean_fba_df_fxn" in primary_config:
+            if "clean_fba_fxn" in primary_config:
                 vLog.info("Cleaning up %s FlowByActivity", primary_source)
                 flows_mapped = dynamically_import_fxn(
                     primary_source,
-                    primary_config["clean_fba_df_fxn"])(flows_mapped)
+                    primary_config["clean_fba_fxn"])(flows_mapped)
 
             # if activity_sets are specified in a file, call them here
             if 'activity_set_file' in primary_config:
@@ -245,12 +245,12 @@ def main(**kwargs):
                     sectorsourcename=method['target_sector_source'],
                     allocationmethod=attr['allocation_method'])
                 # clean up fba with sectors, if specified in yaml
-                if "clean_fba_w_sec_df_fxn" in primary_config:
+                if "clean_fba_w_sec_fxn" in primary_config:
                     vLog.info("Cleaning up %s FlowByActivity with sectors",
                               primary_source)
                     flows_subset_wsec = dynamically_import_fxn(
                         primary_source,
-                        primary_config["clean_fba_w_sec_df_fxn"]
+                        primary_config["clean_fba_w_sec_fxn"]
                     )(flows_subset_wsec, attr=attr, method=method)
 
                 # rename SourceName to MetaSources and drop columns
