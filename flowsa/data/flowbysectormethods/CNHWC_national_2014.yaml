@@ -5,7 +5,7 @@ source_names:
   "EPA_CDDPath":
     data_format: 'FBA'
     class: Other
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2014
     clean_fba_df_fxn: 'assign_wood_to_engineering'
     mfl_mapping: 'EPA_CDDPath'

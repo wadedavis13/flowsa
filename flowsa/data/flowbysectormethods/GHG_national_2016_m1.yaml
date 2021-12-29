@@ -11,7 +11,7 @@ source_names:
   "EPA_GHGI_T_2_1": #U.S. GHG emissions
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2016
     fedefl_mapping: 'GHGI'
     activity_sets:
@@ -130,7 +130,7 @@ source_names:
   "EPA_GHGI_T_3_63": &natgas #CH4 from Natural Gas Systems
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2016
     fedefl_mapping: 'GHGI'
     activity_sets:
@@ -149,7 +149,7 @@ source_names:
   "EPA_GHGI_T_3_38": &petroleum #CH4 from Petroleum Systems
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2016
     fedefl_mapping: 'GHGI'
     activity_sets:
@@ -169,7 +169,7 @@ source_names:
   "EPA_GHGI_T_5_29": #CH4, N2O, CO and NOx from field burning of residues
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       fedefl_mapping: 'GHGI'
       activity_sets:
@@ -187,7 +187,7 @@ source_names:
   "EPA_GHGI_T_5_3":  &animals #CH4 from Enteric Fermentation
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2016
     fedefl_mapping: 'GHGI'
     activity_sets:
@@ -210,7 +210,7 @@ source_names:
   "EPA_GHGI_T_5_18": #Direct N2O emissions from agricultural soils
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2016
     fedefl_mapping: 'GHGI'
     activity_sets:
@@ -250,7 +250,7 @@ source_names:
   "EPA_GHGI_T_5_19": #Indirect N2O emissions from agricultural soils
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2016
     fedefl_mapping: 'GHGI'
     activity_sets:
@@ -267,7 +267,7 @@ source_names:
   "EPA_GHGI_T_3_14": &mobile #CH4 from mobile combustion
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2016
     fedefl_mapping: 'GHGI'
     activity_sets:
@@ -308,7 +308,7 @@ source_names:
   "EPA_GHGI_T_A_14":  # CO2 emissions from stationary combustion and transportation
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: &year 2016
     clean_fba_df_fxn: allocate_industrial_combustion
     fedefl_mapping: 'GHGI'
@@ -433,7 +433,7 @@ source_names:
   "EPA_GHGI_T_3_8":  &stationary_combustion # CH4 emissions from stationary combustion
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2016
     clean_fba_df_fxn: allocate_industrial_combustion
     fedefl_mapping: 'GHGI'
@@ -490,7 +490,7 @@ source_names:
   "EPA_GHGI_T_4_46": #CO2 for selected petrochemicals
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       fedefl_mapping: 'GHGI'
       activity_sets:
@@ -508,7 +508,7 @@ source_names:
   "EPA_GHGI_T_3_22b": #Fossil fuel for non-energy uses
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       fedefl_mapping: 'GHGI'
       activity_sets:
@@ -555,7 +555,7 @@ source_names:
   "EPA_GHGI_T_4_50": # HFCs from HCFC-22 production
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       clean_fba_before_mapping_df_fxn: remove_HFC_kt
       fedefl_mapping: 'GHGI'
@@ -568,7 +568,7 @@ source_names:
   "EPA_GHGI_T_4_94": # HFCs and other emissions from electronics manufacture
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       fedefl_mapping: 'GHGI'
       activity_sets:
@@ -580,7 +580,7 @@ source_names:
   "EPA_GHGI_T_4_101": # HFCs and PFCs from ODS Substitutes
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       clean_fba_before_mapping_df_fxn: clean_HFC_fba # removes HFCs from transportation
       fedefl_mapping: 'GHGI'
@@ -608,7 +608,7 @@ source_names:
   "EPA_GHGI_T_A_103": # HFCs from Transportation
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       clean_fba_before_mapping_df_fxn: split_HFCs_by_type
       fedefl_mapping: 'GHGI'
@@ -627,7 +627,7 @@ source_names:
   "EPA_GHGI_T_4_80": # PFCs from aluminum production
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       fedefl_mapping: 'GHGI'
       activity_sets:
@@ -639,7 +639,7 @@ source_names:
   "EPA_GHGI_T_4_84": # HFCs, SF6, CO2 from magnesium production
       data_format: 'FBA'
       class: Chemicals
-      geoscale_to_use: national
+      geographic_scale: national
       year: 2016
       fedefl_mapping: 'GHGI'
       activity_sets:

@@ -450,9 +450,9 @@ def compare_fba_geo_subset_and_fbs_output_totals(
               'the subset Flow-By-Sector FlowAmount total.')
 
     # determine from scale
-    if fips_number_key[source_attr['geoscale_to_use']] < \
+    if fips_number_key[source_attr['geographic_scale']] < \
             fips_number_key[activity_attr['geographic_scale']]:
-        from_scale = source_attr['geoscale_to_use']
+        from_scale = source_attr['geographic_scale']
     else:
         from_scale = activity_attr['geographic_scale']
 
@@ -515,7 +515,7 @@ def compare_fba_geo_subset_and_fbs_output_totals(
         # loop through the contexts and print results of comparison
         vLog.info('Comparing FBA %s %s subset to FBS results. '
                   'Details in Validation Log', activity_set,
-                  source_attr['geoscale_to_use'])
+                  source_attr['geographic_scale'])
         for i, j in context_list:
             df_merge_subset = \
                 df_merge[(df_merge['Context'] == i) &

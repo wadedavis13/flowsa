@@ -5,7 +5,7 @@ source_names:
   "EPA_NEI_Nonpoint":
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: state
+    geographic_scale: state
     year: 2017
     clean_fba_df_fxn: clean_NEI_fba_no_pesticides
     fedefl_mapping: 'NEI'
@@ -110,7 +110,7 @@ source_names:
   "EPA_NEI_Nonroad":
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2017
     clean_fba_df_fxn: clean_NEI_fba
     fedefl_mapping: 'NEI'
@@ -126,7 +126,7 @@ source_names:
   "EPA_NEI_Onroad":
     data_format: 'FBA'
     class: Chemicals
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2017
     clean_fba_df_fxn: clean_NEI_fba
     fedefl_mapping: 'NEI'

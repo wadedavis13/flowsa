@@ -129,7 +129,6 @@ def main(**kwargs):
     # Create empty list for storing fbs files
     fbs_list = []
     for primary_source, primary_config in fb.items():
-        print(primary_source)
         # pull fba data for allocation
         flows = load_source_dataframe(primary_source, primary_config,
                                       download_FBA_if_missing)
@@ -224,7 +223,7 @@ def main(**kwargs):
 
                 # extract relevant geoscale data or aggregate existing data
                 flows_subset_geo = subset_df_by_geoscale(
-                    flows_subset2, primary_config['geoscale_to_use'],
+                    flows_subset2, primary_config['geographic_scale'],
                     attr['geographic_scale'])
                 # if loading data subnational geoscale, check for data loss
                 if attr['geographic_scale'] != 'national':
@@ -292,9 +291,9 @@ def main(**kwargs):
                 log.info("Aggregating flowbysector to %s level",
                          method['target_geoscale'])
                 # determine from scale
-                if fips_number_key[primary_config['geoscale_to_use']] <\
+                if fips_number_key[primary_config['geographic_scale']] <\
                         fips_number_key[attr['geographic_scale']]:
-                    from_scale = primary_config['geoscale_to_use']
+                    from_scale = primary_config['geographic_scale']
                 else:
                     from_scale = attr['geographic_scale']
 

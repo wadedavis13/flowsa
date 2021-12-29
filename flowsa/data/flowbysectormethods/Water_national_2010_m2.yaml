@@ -9,7 +9,7 @@ source_names:
   "USGS_NWIS_WU":
     data_format: 'FBA'
     class: Water
-    geoscale_to_use: state
+    geographic_scale: state
     year: 2010
     clean_fba_df_fxn: usgs_fba_data_cleanup
     clean_fba_w_sec_df_fxn: usgs_fba_w_sectors_data_cleanup

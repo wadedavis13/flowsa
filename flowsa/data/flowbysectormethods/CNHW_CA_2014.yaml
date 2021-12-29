@@ -5,7 +5,7 @@ source_names:
   "CalRecycle_WasteCharacterization":
     data_format: 'FBA'
     class: Other
-    geoscale_to_use: state
+    geographic_scale: state
     year: 2014
     clean_fba_df_fxn: keep_generated_quantity
     mfl_mapping: 'CalRecycle'

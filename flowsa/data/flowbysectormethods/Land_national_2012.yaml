@@ -9,7 +9,7 @@ source_names:
   "EIA_CBECS_Land": # commercial land use
     data_format: 'FBA'
     class: Land
-    geoscale_to_use: national
+    geographic_scale: national
     source_fba_load_scale: national
     year: 2012
     clean_fba_df_fxn: cbecs_land_fba_cleanup
@@ -30,7 +30,7 @@ source_names:
   "EIA_MECS_Land": # manufacturing land use
     data_format: 'FBA'
     class: Land
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2014
     clean_fba_df_fxn: mecs_land_fba_cleanup_for_land_2012_fbs
     clean_fba_w_sec_df_fxn: mecs_land_clean_allocation_mapped_fba_w_sec
@@ -51,7 +51,7 @@ source_names:
   "BLM_PLS": # used for mining data
     data_format: 'FBA'
     class: Land
-    geoscale_to_use: national
+    geographic_scale: national
     year: 2012
     activity_set_file: 'BLM_PLS_2012_asets.csv'
     activity_sets:
@@ -78,7 +78,7 @@ source_names:
   "USDA_ERS_MLU":
     data_format: 'FBA'
     class: Land
-    geoscale_to_use: state
+    geographic_scale: state
     year: 2012
     activity_sets:
       activity_set_1:

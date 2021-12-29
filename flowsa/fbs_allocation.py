@@ -119,7 +119,7 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
                            df_year=attr['allocation_source_year'],
                            flowclass=attr['allocation_source_class'],
                            geoscale_from=attr['allocation_from_scale'],
-                           geoscale_to=primary_config['geoscale_to_use'],
+                           geoscale_to=primary_config['geographic_scale'],
                            download_FBA_if_missing=download_FBA_if_missing,
                            **fba_dict)
 
@@ -277,7 +277,7 @@ def allocation_helper(df_w_sector, attr, method, primary_config,
                            df_year=attr['helper_source_year'],
                            flowclass=attr['helper_source_class'],
                            geoscale_from=attr['helper_from_scale'],
-                           geoscale_to=primary_config['geoscale_to_use'],
+                           geoscale_to=primary_config['geographic_scale'],
                            download_FBA_if_missing=download_FBA_if_missing,
                            **fba_dict)
 

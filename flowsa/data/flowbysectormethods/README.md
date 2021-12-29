@@ -17,7 +17,7 @@ Description of parameters in flowbysectormethods yamls. All values are strings u
    parquet stored in flowsa, or calls on a specified function to load data from outside flowsa in FBS format
 3. _class_: a text string in 'Class' column of flowbyactivity (ex. Water), see class types in
    (source_catalog.yaml)[https://github.com/USEPA/flowsa/blob/master/flowsa/data/source_catalog.yaml]
-4. _geoscale_to_use_: the geoscale of the FBA set to use for sector allocation
+4. _geographic_scale_: the geoscale of the FBA set to use for sector allocation
    (national, state, or county)
 5. _year_: year of available dataset (ex. 2015)
 6. _clean_fba_before_mapping_df_fxn_: (optional) calls on function in the source.py file to clean up/modify
