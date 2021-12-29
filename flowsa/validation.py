@@ -334,6 +334,12 @@ def compare_activity_to_sector_flowamounts(fba_load, fbs_load,
     :return: printout data differences between loaded FBA and FBS output,
              save results as csv in local directory
     """
+
+    # rename SourceName to MetaSources and drop columns
+    fba_load = fba_load.rename(
+        columns={'SourceName': 'MetaSources'}).drop(
+        columns=['FlowName', 'Compartment'])
+
     if check_activities_sector_like(source_name):
         vLog.debug('Not comparing loaded FlowByActivity to FlowBySector '
                    'ratios for a dataset with sector-like activities because '
