@@ -455,12 +455,18 @@ def compare_fba_geo_subset_and_fbs_output_totals(
     vLog.info('Comparing Flow-By-Activity subset by activity and geography to '
               'the subset Flow-By-Sector FlowAmount total.')
 
+    # determine activity scale
+    if 'geographic_scale' in activity_attr:
+        activity_geoscale = activity_attr.get('geographic_scale')
+    else:
+        activity_geoscale = source_attr['geographic_scale']
+
     # determine from scale
     if fips_number_key[source_attr['geographic_scale']] < \
-            fips_number_key[activity_attr['geographic_scale']]:
+            fips_number_key[activity_geoscale]:
         from_scale = source_attr['geographic_scale']
     else:
-        from_scale = activity_attr['geographic_scale']
+        from_scale = activity_geoscale
 
     # extract relevant geoscale data or aggregate existing data
     fba = subset_df_by_geoscale(fba_load, from_scale,

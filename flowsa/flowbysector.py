@@ -298,10 +298,10 @@ def main(**kwargs):
                          method['target_geoscale'])
                 # determine from scale
                 if fips_number_key[primary_config['geographic_scale']] <\
-                        fips_number_key[attr['geographic_scale']]:
+                        fips_number_key[activity_geoscale]:
                     from_scale = primary_config['geographic_scale']
                 else:
-                    from_scale = attr['geographic_scale']
+                    from_scale = activity_geoscale
 
                 fbs_geo_agg = agg_by_geoscale(
                     fbs, from_scale, method['target_geoscale'], groupingcols)
