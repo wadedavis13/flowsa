@@ -69,26 +69,27 @@ source_names:
               - 'AREA BEARING & NON-BEARING, IRRIGATED'
               - 'AREA GROWN, IRRIGATED'
             geographic_scale: state
-            clean_allocation_fba: coa_irrigated_cropland_fba_cleanup
-#            clean_allocation_fba_w_sec: disaggregate_coa_cropland_to_6_digit_naics_for_water_withdrawal
+            clean_fba_fxn: coa_irrigated_cropland_fba_cleanup
+            clean_fba_w_sec_fxn: coa_cropland_w_naics_cleanup
             allocation_method:
               disaggregation:
                 allocation_source: "USDA_CoA_Cropland_NAICS"
-                year: 2017 # check
+                year: 2017
                 class: "Land"
-                parameter:
-                  "112":
-                    flow:
-                    - "FARM OPERATIONS"
-                  "111":
-                    flow:
-                      - "AG LAND, CROPLAND, HARVESTED"
+                geographic_scale: state
+                disaggregation_fxn: disaggregate_df_to_naics6_w_cropland_naics
               multiplication:
                 allocation_source: USDA_IWMS
                 class: "Water"
                 year: 2018
                 geographic_scale: state
-                clean_helper_fba_wsec: iwms_aggregation
+                allocation_method:
+                  weighted_avg:
+                    allocation_source: "USDA_IWMS"
+                    class: Land
+                    year: 2018
+                    geographic_scale: state
+                    weighted_avg_fxn: iwms_aggregation
       activity_set_5:
         names:
           - "Livestock"
