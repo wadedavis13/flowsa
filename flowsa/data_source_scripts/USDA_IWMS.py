@@ -157,7 +157,7 @@ def disaggregate_iwms_to_6_digit_naics_for_water_withdrawal(df, attr, method,
     return df
 
 
-def iwms_aggregation(df_load, **kwargs):
+def iwms_aggregation(primary_df, secondary_df):
     """
     Before multiplying the USDA CoA Cropland data by IWMS data,
     first aggregate the two hay values from IWMS
@@ -166,21 +166,15 @@ def iwms_aggregation(df_load, **kwargs):
     :return:
     """
 
-    # load the acreage information for iwms
-    land_load = load_fba_w_standardized_units(
-        "USDA_IWMS", year=kwargs['attr']['helper_source_year'],
-        flowclass="Land",
-        geographic_level="state")
-
     # subset to hay and haylage
-    land = land_load[land_load['ActivityConsumedBy'].isin(
+    land = secondary_df[secondary_df['ActivityConsumedBy'].isin(
         ['HAY & HAYLAGE, (EXCL ALFALFA)', 'HAY & HAYLAGE, ALFALFA'])]
     land_sub = land[['ActivityConsumedBy', 'FlowAmount',
                      'Location']].reset_index(drop=True)
     land_sub = land_sub.rename(columns={'FlowAmount': 'HelperFlow'})
 
     # merge the two dfs
-    df = pd.merge(df_load, land_sub, how='right')
+    df = pd.merge(primary_df, land_sub, how='right')
     df['HelperFlow'] = df['HelperFlow'].fillna(1)
     # drop rows where flow is 0
     df = df[df['FlowAmount'] != 0]
@@ -194,7 +188,7 @@ def iwms_aggregation(df_load, **kwargs):
     wt_flow = df.groupby(df['Location']).apply(
         lambda x: np.average(x['FlowAmount'], weights=x[
             'HelperFlow'])).reset_index()
-    wt_flow = wt_flow.rename(columns={wt_flow.columns[1]:'NewFlow'})
+    wt_flow = wt_flow.rename(columns={wt_flow.columns[1]: 'NewFlow'})
 
     df2 = df.merge(wt_flow)
     # reset flowamount, drop duplicates, drop columns
@@ -202,8 +196,8 @@ def iwms_aggregation(df_load, **kwargs):
                                                         'NewFlow'])
     df3 = df2.drop_duplicates()
 
-    # drop data from original, add in modifed data
-    df_o = df_load[~df_load['SectorConsumedBy'].isin(['111940A', '111940B'])]
+    # drop data from original, add in modified data
+    df_o = primary_df[~primary_df['SectorConsumedBy'].isin(['111940A', '111940B'])]
     df4 = pd.concat([df_o, df3], ignore_index=True)
 
     return df4
