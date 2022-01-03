@@ -198,29 +198,46 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
        should be downloaded from Data Commons
     :return: df, allocated activity names
     """
-
+    # todo: modify so can have unlimited number of allocation methods..
     # determine the allocation methods used to modify the source data. Loop
     # through the methods and loop through any further allocation methods
     # before modifying the source dataset
-    for alloc_method, alloc_config in attr['allocation_method'].items():
-        alloc_df = load_clean_allocation_fba(
-            flow_subset_mapped, alloc_method, alloc_config, names, method,
+    for alloc_method1, alloc_config1 in attr['allocation_method'].items():
+        alloc_df1 = load_clean_allocation_fba(
+            flow_subset_mapped, alloc_method1, alloc_config1, names, method,
             primary_source, primary_config, download_FBA_if_missing)
-        if 'allocation_method' in alloc_config:
-            for am, ac in alloc_config['allocation_method'].items():
-                adf = load_clean_allocation_fba(
-                    alloc_df, am, ac, names, method, primary_source,
-                    primary_config, download_FBA_if_missing)
-                alloc_df = merge_fbas_by_geoscale(
-                    alloc_df, alloc_config['geographic_scale'],
-                    adf, ac['geographic_scale'])
-                alloc_df = allocate_source_w_secondary_source(alloc_df, am)
+        if 'allocation_method' in alloc_config1:
+            for alloc_method2, alloc_config2 in \
+                    alloc_config1['allocation_method'].items():
+                alloc_df2 = load_clean_allocation_fba(
+                    alloc_df1, alloc_method2, alloc_config2, names, method,
+                    primary_source, primary_config, download_FBA_if_missing)
+                if 'allocation_method' in alloc_config2:
+                    for alloc_method3, alloc_config3 in \
+                            alloc_config2['allocation_method'].items():
+                        alloc_df3 = load_clean_allocation_fba(
+                            alloc_df2, alloc_method3, alloc_config3, names,
+                            method, primary_source, primary_config,
+                            download_FBA_if_missing)
+                        if alloc_method3 != 'disaggregation':
+                            alloc_df2 = merge_fbas_by_geoscale(
+                                alloc_df2, alloc_config2['geographic_scale'],
+                                alloc_df3, alloc_config3['geographic_scale'])
+                        alloc_df2 = allocate_source_w_secondary_source(
+                            alloc_df2, alloc_df3, alloc_method3, alloc_config3)
+                if alloc_method2 != 'disaggregation':
+                    alloc_df1 = merge_fbas_by_geoscale(
+                        alloc_df1, alloc_config1['geographic_scale'],
+                        alloc_df2, alloc_config2['geographic_scale'])
+                alloc_df1 = allocate_source_w_secondary_source(
+                    alloc_df1, alloc_df2, alloc_method2, alloc_config2)
         # todo: change geoscale for source data
-        flow_subset_mapped = merge_fbas_by_geoscale(
-            flow_subset_mapped, primary_config['geographic_scale'],
-            alloc_df, alloc_config['geographic_scale'])
+        if alloc_method1 != 'disaggregation':
+            flow_subset_mapped = merge_fbas_by_geoscale(
+                flow_subset_mapped, primary_config['geographic_scale'],
+                alloc_df1, alloc_config1['geographic_scale'])
         flow_subset_mapped = allocate_source_w_secondary_source(
-            flow_subset_mapped, alloc_method)
+            flow_subset_mapped, alloc_df1, alloc_method1, alloc_config1)
 
     return flow_subset_mapped
 
