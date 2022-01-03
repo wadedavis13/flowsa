@@ -322,6 +322,22 @@ def disaggregate_coa_cropland_to_6_digit_naics(
     return fba_w_sector
 
 
+def coa_cropland_w_naics_cleanup(df_w_sec, **kwargs):
+    # define the activity and sector columns to base modifications on
+    # these definitions will vary dependent on class type
+    activity_col = 'ActivityConsumedBy'
+    sector_col = 'SectorConsumedBy'
+
+    # drop rows without assigned sectors
+    fba_w_sector = df_w_sec[~df_w_sec[sector_col].isna()].reset_index(
+        drop=True)
+
+    # modify the flowamounts related to the 6 naics 'orchards' are mapped to
+    fba_w_sector = modify_orchard_flowamounts(fba_w_sector,
+                                              activity_column=activity_col)
+    return fba_w_sector
+
+
 def disaggregate_coa_cropland_to_6_digit_naics_for_water_withdrawal(
         fba_w_sector, attr, method, **kwargs):
     """
@@ -333,17 +349,10 @@ def disaggregate_coa_cropland_to_6_digit_naics_for_water_withdrawal(
            Currently includes data source name.
     :return: df, CoA cropland with disaggregated NAICS sectors
     """
-
     # define the activity and sector columns to base modifications on
     # these definitions will vary dependent on class type
-    activity_col = 'ActivityConsumedBy'
     sector_col = 'SectorConsumedBy'
 
-    # drop rows without assigned sectors
-    fba_w_sector = fba_w_sector[~fba_w_sector[sector_col].isna()].reset_index(drop=True)
-
-    # modify the flowamounts related to the 6 naics 'orchards' are mapped to
-    fba_w_sector = modify_orchard_flowamounts(fba_w_sector, activity_column=activity_col)
 
     # use ratios of usda 'land in farms' to determine animal use of pasturelands at 6 digit naics
     fba_w_sector = disaggregate_pastureland(fba_w_sector, attr, method, year=attr['allocation_source_year'],
