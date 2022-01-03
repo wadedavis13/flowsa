@@ -15,8 +15,8 @@ from flowsa.common import US_FIPS, WITHDRAWN_KEYWORD, fba_wsec_default_grouping_
 from flowsa.dataclean import replace_strings_with_NoneType, replace_NoneType_with_empty_cells
 from flowsa.flowbyfunctions import assign_fips_location_system, \
     load_fba_w_standardized_units
-from flowsa.data_source_scripts.USDA_CoA_Cropland import disaggregate_pastureland, \
-    disaggregate_cropland
+from flowsa.data_source_scripts.USDA_CoA_Cropland_NAICS import \
+    disaggregate_pastureland, disaggregate_cropland
 
 
 def iwms_url_helper(*, build_url, config, **_):
