@@ -231,10 +231,13 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
                         alloc_df2, alloc_config2['geographic_scale'])
                 alloc_df1 = allocate_source_w_secondary_source(
                     alloc_df1, alloc_df2, alloc_method2, alloc_config2)
-        # todo: change geoscale for source data
         if alloc_method1 != 'disaggregation':
+            if 'geographic_scale' in attr:
+                activity_geoscale = attr.get('geographic_scale')
+            else:
+                activity_geoscale = primary_config['geographic_scale']
             flow_subset_mapped = merge_fbas_by_geoscale(
-                flow_subset_mapped, primary_config['geographic_scale'],
+                flow_subset_mapped, activity_geoscale,
                 alloc_df1, alloc_config1['geographic_scale'])
         flow_subset_mapped = allocate_source_w_secondary_source(
             flow_subset_mapped, alloc_df1, alloc_method1, alloc_config1)
