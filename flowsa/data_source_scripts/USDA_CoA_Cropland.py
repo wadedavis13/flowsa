@@ -342,7 +342,8 @@ def modify_orchard_flowamounts(fba, activity_column):
     """
 
     # divide the Orchards data allocated to NAICS by 6 to avoid double counting
-    fba.loc[fba[activity_column] == 'ORCHARDS',
-            'FlowAmount'] = fba['FlowAmount'] / 8
+    fba['FlowAmount'] = np.where(fba[activity_column] == 'ORCHARDS',
+                                 fba['FlowAmount'] / 8,
+                                 fba['FlowAmount'])
 
     return fba
