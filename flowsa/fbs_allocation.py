@@ -198,6 +198,11 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
        should be downloaded from Data Commons
     :return: df, allocated activity names
     """
+
+    # define a list of allocation methods where the two allocation FBAs
+    # should not be merged/should not determine a "helper flow" prior to the
+    # allocation method
+    allocation_exception_list = ['disaggregation', 'weighted_avg']
     # todo: modify so can have unlimited number of allocation methods..
     # determine the allocation methods used to modify the source data. Loop
     # through the methods and loop through any further allocation methods
@@ -219,19 +224,19 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
                             alloc_df2, alloc_method3, alloc_config3, names,
                             method, primary_source, primary_config,
                             download_FBA_if_missing)
-                        if alloc_method3 != 'disaggregation':
+                        if alloc_method3 not in allocation_exception_list:
                             alloc_df2 = merge_fbas_by_geoscale(
                                 alloc_df2, alloc_config2['geographic_scale'],
                                 alloc_df3, alloc_config3['geographic_scale'])
                         alloc_df2 = allocate_source_w_secondary_source(
                             alloc_df2, alloc_df3, alloc_method3, alloc_config3)
-                if alloc_method2 != 'disaggregation':
+                if alloc_method2 not in allocation_exception_list:
                     alloc_df1 = merge_fbas_by_geoscale(
                         alloc_df1, alloc_config1['geographic_scale'],
                         alloc_df2, alloc_config2['geographic_scale'])
                 alloc_df1 = allocate_source_w_secondary_source(
                     alloc_df1, alloc_df2, alloc_method2, alloc_config2)
-        if alloc_method1 != 'disaggregation':
+        if alloc_method1 not in allocation_exception_list:
             if 'geographic_scale' in attr:
                 activity_geoscale = attr.get('geographic_scale')
             else:
