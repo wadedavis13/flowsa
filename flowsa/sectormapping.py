@@ -312,7 +312,8 @@ def convert_units_to_annual(df):
 
 
 def map_flows(fba, from_fba_source, flow_type='ELEMENTARY_FLOW',
-              ignore_source_name=False, **kwargs):
+              ignore_source_name=False, keep_unmapped_rows=False,
+              keep_fba_columns=False):
     """
     Applies mapping via esupy from fedelemflowlist or material
     flow list to convert flows to standardized list of flows
@@ -321,10 +322,10 @@ def map_flows(fba, from_fba_source, flow_type='ELEMENTARY_FLOW',
     :param flow_type: str either 'ELEMENTARY_FLOW', 'TECHNOSPHERE_FLOW',
         or 'WASTE_FLOW'
     :param ignore_source_name: bool, passed to apply_flow_mapping
-    :param kwargs: optional - keep_unmapped_rows: False if want
-        unmapped rows dropped, True if want to retain and keep_fba_columns:
-        boolean, True or False, indicate if want to maintain
-        'FlowName' and 'Compartment' columns in returned df
+    :param keep_unmapped_rows: bool, False if want unmapped rows dropped,
+        True if want to retain
+    :param keep_fba_columns: boolean, True or False, indicate if want to
+        maintain 'FlowName' and 'Compartment' columns in returned df
     :return: df, with flows mapped using federal elementary flow list or
         material flow list
     """
@@ -333,17 +334,10 @@ def map_flows(fba, from_fba_source, flow_type='ELEMENTARY_FLOW',
     # are in an annual format
     fba = convert_units_to_annual(fba)
 
-    keep_unmapped_rows = False
-
     # if need to maintain FBA columns, create copies of columns
-    if kwargs != {}:
-        if ('keep_fba_columns' in kwargs) & \
-                (kwargs['keep_fba_columns'] is True):
-            fba['Flowable'] = fba['FlowName']
-            fba['Context'] = fba['Compartment']
-        # if keep unmapped rows identified in kwargs, then use
-        if 'keep_unmapped_rows' in kwargs:
-            keep_unmapped_rows = kwargs['keep_unmapped_rows']
+    if keep_fba_columns is True:
+        fba['Flowable'] = fba['FlowName']
+        fba['Context'] = fba['Compartment']
 
     # else, rename
     else:
@@ -365,13 +359,17 @@ def map_flows(fba, from_fba_source, flow_type='ELEMENTARY_FLOW',
     return mapped_df
 
 
-def map_fbs_flows(fbs, from_fba_source, primary_config, **kwargs):
+def map_fbs_flows(fbs, from_fba_source, primary_config,
+                  keep_unmapped_rows=False, keep_fba_columns=False):
     """
     Identifies the mapping file and applies mapping to fbs flows
     :param fbs: flow-by-sector dataframe
     :param from_fba_source: str Source name of fba list to look for mappings
     :param primary_config: dictionary, The datasource parameters
-    :param kwargs: includes keep_unmapped_columns and keep_fba_columns
+    :param keep_unmapped_rows: bool, False if want unmapped rows dropped,
+        True if want to retain
+    :param keep_fba_columns: boolean, True or False, indicate if want to
+        maintain 'FlowName' and 'Compartment' columns in returned df
     :return fbs_mapped: df, with flows mapped using federal elementary
            flow list or material flow list
     :return mapping_files: str, name of mapping file
@@ -393,7 +391,8 @@ def map_fbs_flows(fbs, from_fba_source, primary_config, **kwargs):
         flow_type = 'ELEMENTARY_FLOW'
 
     fbs_mapped = map_flows(fbs, mapping_files, flow_type,
-                           ignore_source_name, **kwargs)
+                           ignore_source_name, keep_unmapped_rows,
+                           keep_fba_columns)
 
     return fbs_mapped, mapping_files
 
