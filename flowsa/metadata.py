@@ -126,7 +126,7 @@ def return_fbs_method_data(source_name, config):
                     if 'allocation_method' in alloc_config:
                         for alloc_method2, alloc_config2 in \
                                 alloc_config['allocation_method'].items():
-                            meta['primary_source_meta'][k]['allocation_source_meta'][alloc_config['allocation_source']] = \
+                            meta['primary_source_meta'][k]['allocation_source_meta'][alloc_config2['allocation_source']] = \
                                 getMetadata(alloc_config2['allocation_source'],
                                             alloc_config2['year'])
                     if 'literature_sources' in attr:
