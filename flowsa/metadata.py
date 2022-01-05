@@ -116,24 +116,26 @@ def return_fbs_method_data(source_name, config):
         for aset, attr in activities.items():
             if attr['allocation_method'] not in \
                     (['direct', 'allocation_function']):
-                # append fba meta
-                meta['primary_source_meta'][k]['allocation_source_meta'][
-                    attr['allocation_source']] = getMetadata(
-                    attr['allocation_source'], attr['allocation_source_year'])
-            if 'helper_source' in attr:
-                meta['primary_source_meta'][k][
-                    'allocation_source_meta'][attr['helper_source']] = \
-                    getMetadata(attr['helper_source'],
-                                attr['helper_source_year'])
-            if 'literature_sources' in attr:
-                lit = attr['literature_sources']
-                for s, y in lit.items():
-                    lit_meta = return_fba_method_meta(s, year=y)
+                for alloc_method, alloc_config in \
+                        attr['allocation_method'].items():
                     # append fba meta
-                    meta['primary_source_meta'][k][
-                        'allocation_source_meta'][s] = lit_meta
-                    # subset the additional fbas to the source and
-                    # activity set, if exists
+                    meta['primary_source_meta'][k]['allocation_source_meta'][
+                        alloc_config['allocation_source']] = getMetadata(
+                        alloc_config['allocation_source'],
+                        alloc_config['year'])
+                    if 'allocation_method' in alloc_config:
+                        for alloc_method2, alloc_config2 in \
+                                alloc_config['allocation_method'].items():
+                            meta['primary_source_meta'][k]['allocation_source_meta'][alloc_config['allocation_source']] = \
+                                getMetadata(alloc_config2['allocation_source'],
+                                            alloc_config2['year'])
+                    if 'literature_sources' in attr:
+                        lit = attr['literature_sources']
+                        for s, y in lit.items():
+                            lit_meta = return_fba_method_meta(s, year=y)
+                            # append fba meta
+                            meta['primary_source_meta'][k][
+                                'allocation_source_meta'][s] = lit_meta
 
     return meta
 
