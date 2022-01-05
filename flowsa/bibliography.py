@@ -10,8 +10,7 @@ import pandas as pd
 from bibtexparser.bwriter import BibTexWriter
 from bibtexparser.bibdatabase import BibDatabase
 from flowsa.common import load_yaml_dict, \
-    load_values_from_literature_citations_config, \
-    load_functions_loading_fbas_config, get_flowsa_base_name, \
+    load_values_from_literature_citations_config, get_flowsa_base_name, \
     sourceconfigpath, load_yaml_dict
 from flowsa.settings import outputpath, biboutputpath, log
 

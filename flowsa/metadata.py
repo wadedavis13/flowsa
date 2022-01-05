@@ -9,7 +9,6 @@ FlowByActivity (FBA) and FlowBySector (FBS) datasets
 import pandas as pd
 from esupy.processed_data_mgmt import FileMeta, write_metadata_to_file, \
     read_source_metadata
-from flowsa.common import load_functions_loading_fbas_config
 from flowsa.settings import paths, PKG, PKG_VERSION_NUMBER, WRITE_FORMAT, \
     GIT_HASH, GIT_HASH_LONG, log
 
@@ -135,20 +134,6 @@ def return_fbs_method_data(source_name, config):
                         'allocation_source_meta'][s] = lit_meta
                     # subset the additional fbas to the source and
                     # activity set, if exists
-        if add_fbas is not None:
-            try:
-                fbas = add_fbas[k]
-                for acts, fxn_info in fbas.items():
-                    for fxn, fba_info in fxn_info.items():
-                        for fba, y in fba_info.items():
-                            fxn_config = \
-                                load_functions_loading_fbas_config()[fxn][fba]
-                            meta['primary_source_meta'][k][
-                                'allocation_source_meta'][
-                                fxn_config['source']] = getMetadata(
-                                fxn_config['source'], y)
-            except KeyError:
-                pass
 
     return meta
 
