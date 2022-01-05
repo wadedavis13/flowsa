@@ -886,8 +886,7 @@ def load_fba_w_standardized_units(datasource, year, **kwargs):
             fba = clean_df(fba, flow_by_activity_fields, fba_fill_na_dict,
                            drop_description=False)
             fba, mapping_files = map_fbs_flows(
-                fba, datasource, kwargs, keep_fba_columns=True,
-                keep_unmapped_rows=True)
+                fba, datasource, kwargs, keep_fba_columns=True)
         else:
             # ensure df loaded correctly/has correct dtypes
             fba = clean_df(fba, flow_by_activity_fields, fba_fill_na_dict)
