@@ -389,7 +389,7 @@ def usgs_fba_data_cleanup(df):
 
     # drop flowname = 'total' rows when possible to prevent double counting
     # subset data where flowname = total and where it does not
-    vLogDetailed.info('Drop rows where the FlowName is total to prevent'
+    vLogDetailed.info('Drop rows where the FlowName is total to prevent '
                       'double counting at the state and county levels. '
                       'Retain rows at national level')
     df2 = dfc[dfc['FlowName'] == 'total']
