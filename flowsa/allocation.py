@@ -173,12 +173,22 @@ def proportional_allocation_by_location_and_activity(df_load, sectorcolumn):
                      if e in df.columns.values.tolist()]
     # trim whitespace
     df[sectorcolumn] = df[sectorcolumn].str.strip()
+
+    # load crosswalk and subset df by values in the naics crosswalk length
+    # load naics length crosswwalk
+    cw_load = load_crosswalk('sector_length')
+    cw_melt = cw_load.melt(var_name="sLen", value_name=sectorcolumn
+                           ).drop_duplicates().reset_index(drop=True)
+    cw_melt['sLen'] = cw_melt['sLen'].str.replace(
+        'NAICS_', "")
+    cw_melt['sLen'] = pd.to_numeric(cw_melt['sLen'])
     # to create the denominator dataframe first add a column that captures
-    # the sector length
-    denom_df = df.assign(sLen=df[sectorcolumn].str.len())
+    # the sector length based on the sector length crosswalk, not on the
+    # sector string length because of household and government sectors
+    denom_df = df.merge(cw_melt, how='left')
     denom_df = denom_df[denom_df['sLen'] == denom_df.groupby(activity_cols)[
         'sLen'].transform(min)].drop(columns='sLen')
-    denom_df.loc[:, 'Denominator'] = \
+    denom_df['Denominator'] = \
         denom_df.groupby(grouping_cols)['HelperFlow'].transform('sum')
 
     # list of column headers, that if exist in df, should be aggregated
