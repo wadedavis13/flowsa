@@ -308,8 +308,12 @@ def fba_multiplication(df_load, sector_col):
 
 
 def fba_proportional(df_load, col_for_alloc_ratios):
+    # disaggregate to capture single parent to child naics
+    df = sector_disaggregation(df_load)
+    # run sector aggregation to determine values at NAICS2
+    df = sector_aggregation(df)
     modified_fba_allocation = proportional_allocation_by_location_and_activity(
-            df_load, col_for_alloc_ratios)
+            df, col_for_alloc_ratios)
     modified_fba_allocation.loc[:, 'FlowAmount'] = \
         modified_fba_allocation['FlowAmount'] * \
         modified_fba_allocation['FlowAmountRatio']
