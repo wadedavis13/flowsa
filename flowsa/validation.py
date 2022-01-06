@@ -404,7 +404,8 @@ def compare_activity_to_sector_flowamounts(fba_load, fbs_load,
 
         tolerance = 0.02
         comparison2 = comparison[(comparison['Ratio'] < 1 - tolerance) |
-                                 (comparison['Ratio'] > 1 + tolerance)]
+                                 (comparison['Ratio'] > 1 +
+                                  tolerance)].reset_index(drop=True)
 
         if len(comparison2) > 0:
             vLog.info('There are %s combinations of flowable/context/sector '
