@@ -335,8 +335,7 @@ def fba_proportional_flagged(df_load):
                      'Denominator', 'FlowAmountRatio'])
     # run sector aggregation
     modified_fba_allocation = \
-        sector_aggregation(modified_fba_allocation,
-                           fba_wsec_default_grouping_fields)
+        sector_aggregation(modified_fba_allocation)
 
     return modified_fba_allocation
 

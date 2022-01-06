@@ -177,7 +177,7 @@ def sector_ratios(df, sectorcolumn):
     return df_w_ratios
 
 
-def sector_aggregation(df_load, group_cols):
+def sector_aggregation(df_load):
     """
     Function that checks if a sector length exists, and if not,
     sums the less aggregated sector
@@ -189,6 +189,8 @@ def sector_aggregation(df_load, group_cols):
     # ensure None values are not strings
     df = replace_NoneType_with_empty_cells(df_load)
 
+    # determine grouping columns - based on datatype
+    group_cols = list(df.select_dtypes(include=['object', 'int']).columns)
     # determine if activities are sector-like,
     # if aggregating a df with a 'SourceName'
     sector_like_activities = False
@@ -206,6 +208,9 @@ def sector_aggregation(df_load, group_cols):
                    ('ActivityProducedBy', 'ActivityConsumedBy')]
         df = df[df_cols]
 
+    # load naics length crosswwalk
+    cw_load = load_crosswalk('sector_length')
+
     # find the longest length sector
     length = df[[fbs_activity_fields[0], fbs_activity_fields[1]]].apply(
         lambda x: x.str.len()).max().max()
@@ -213,30 +218,46 @@ def sector_aggregation(df_load, group_cols):
     # for loop in reverse order longest length naics minus 1 to 2
     # appends missing naics levels to df
     for i in range(length, 2, -1):
-        # df where either sector column is length or both columns are
-        df1 = df[((df['SectorProducedBy'].apply(lambda x: len(x) == i)) |
-                 (df['SectorConsumedBy'].apply(lambda x: len(x) == i)))
-                 |
-                 ((df['SectorProducedBy'].apply(lambda x: len(x) == i)) &
-                  (df['SectorConsumedBy'].apply(lambda x: len(x) == i)))]
 
-        # add new columns dropping last digit of sectors
-        df1 = df1.assign(
-            SPB=df1['SectorProducedBy'].apply(lambda x: x[0:i - 1]))
-        df1 = df1.assign(
-            SCB=df1['SectorConsumedBy'].apply(lambda x: x[0:i - 1]))
+        sector_merge = 'NAICS_' + str(i)
+        sector_add = 'NAICS_' + str(i-1)
+
+        # subset the df by naics length
+        cw = cw_load[[sector_merge,
+                      sector_add]].drop_duplicates().reset_index(drop=True)
+
+        sector_merge_list = cw[sector_merge].values.tolist()
+        sector_add_list = cw[sector_add].values.tolist()
+
+        # df where either sector column is length or both columns are
+
+        df1 = df[(df['SectorProducedBy'].isin(sector_merge_list) |
+                 df['SectorConsumedBy'].isin(sector_merge_list)
+                  ) | (
+                df['SectorProducedBy'].isin(sector_merge_list) &
+                df['SectorConsumedBy'].isin(sector_merge_list))]
+
+        # merge the crosswalk to create new columns where sector length is
+        # one less
+        df1 = df1.merge(cw, how='left', left_on=['SectorProducedBy'],
+                        right_on=[sector_merge]).rename(
+            columns={sector_add: 'SPB'}).drop(columns=sector_merge)
+        df1 = df1.merge(cw, how='left',
+                        left_on=['SectorConsumedBy'], right_on=[sector_merge]
+                        ).rename(
+            columns={sector_add: 'SCB'}).drop(columns=sector_merge)
 
         # second dataframe where length is l - 1
-        df2 = df[((df['SectorProducedBy'].apply(lambda x: len(x) == i-1)) |
-                 (df['SectorConsumedBy'].apply(lambda x: len(x) == i-1)))
-                 |
-                 ((df['SectorProducedBy'].apply(lambda x: len(x) == i-1)) &
-                  (df['SectorConsumedBy'].apply(lambda x: len(x) == i-1))
-                  )].rename(columns={'SectorProducedBy': 'SPB',
-                                     'SectorConsumedBy': 'SCB'})
+        df2 = df[(df['SectorProducedBy'].isin(sector_add_list) |
+                 df['SectorConsumedBy'].isin(sector_add_list)
+                  ) | (
+                df['SectorProducedBy'].isin(sector_add_list) &
+                df['SectorConsumedBy'].isin(sector_add_list)
+        )].rename(columns={'SectorProducedBy': 'SPB',
+                           'SectorConsumedBy': 'SCB'})
 
         # merge the dfs
-        merge_cols = [col for col in df2.columns if hasattr(df2[col], 'str')]
+        merge_cols = list(df2.select_dtypes(include=['object', 'int']).columns)
         # also drop activity and description cols
         merge_cols = [c for c in merge_cols
                       if c not in ['ActivityConsumedBy', 'ActivityProducedBy',
@@ -260,13 +281,6 @@ def sector_aggregation(df_load, group_cols):
             # append to df
             agg_sectors = replace_NoneType_with_empty_cells(agg_sectors)
             df = df.append(agg_sectors, sort=False).reset_index(drop=True)
-
-    # manually modify non-NAICS codes that might exist in sector
-    # domestic/household
-    df = df.replace({'F0': 'F010',
-                     'F01': 'F010'})
-    # drop any duplicates created by modifying sector codes
-    df = df.drop_duplicates()
 
     # if activities are source-like, set col values as
     # copies of the sector columns
@@ -782,7 +796,7 @@ def equally_allocate_suppressed_parent_to_child_naics(
     dfn2 = dfn[dfn['FlowAmount'] != 0].reset_index(drop=True)
     dfn2 = dfn2.drop(columns=['secLength'])
 
-    dff = sector_aggregation(dfn2, fba_wsec_default_grouping_fields)
+    dff = sector_aggregation(dfn2)
 
     # if activities are source-like, set col values as copies
     # of the sector columns

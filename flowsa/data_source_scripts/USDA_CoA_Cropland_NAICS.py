@@ -333,7 +333,7 @@ def disaggregate_cropland(df_to_disag, coa_naics, sector_column):
 
     # aggregate sectors to create any missing naics levels
     group_cols = fbs_default_grouping_fields
-    naics2 = sector_aggregation(naics, group_cols)
+    naics2 = sector_aggregation(naics)
     # add missing naics5/6 when only one naics5/6 associated with a naics4
     naics3 = sector_disaggregation(naics2)
     # drop rows where FlowAmount 0
