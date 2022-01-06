@@ -402,7 +402,7 @@ def compare_activity_to_sector_flowamounts(fba_load, fbs_load,
             df_merge['SectorLength'] == sector_level_key[
                 config['target_sector_level']]].reset_index(drop=True)
 
-        tolerance = 0.01
+        tolerance = 0.02
         comparison2 = comparison[(comparison['Ratio'] < 1 - tolerance) |
                                  (comparison['Ratio'] > 1 + tolerance)]
 
@@ -412,23 +412,20 @@ def compare_activity_to_sector_flowamounts(fba_load, fbs_load,
                       'is less than or greater than 1 by %s',
                       len(comparison2), str(tolerance))
 
-        # include df subset in the validation log
-        # only print rows where flowamount ratio is less t
-        # han 1 (round flowamountratio)
-        df_v = comparison2[comparison2['Ratio'].apply(
-            lambda x: round(x, 3) < 1)].reset_index(drop=True)
+        # round values
+        comparison2['Ratio'] = comparison2['Ratio'].round(3)
 
         # save to validation log
         log.info('Save the comparison of FlowByActivity load '
                  'to FlowBySector ratios for %s in validation log',
                  activity_set)
         # if df not empty, print, if empty, print string
-        if df_v.empty:
+        if comparison2.empty:
             vLogDetailed.info('Ratios for %s all round to 1', activity_set)
         else:
             vLogDetailed.info('Comparison of FlowByActivity load to '
                               'FlowBySector ratios for %s: '
-                              '\n {}'.format(df_v.to_string()), activity_set)
+                              '\n {}'.format(comparison2.to_string()), activity_set)
 
 
 def compare_fba_geo_subset_and_fbs_output_totals(
@@ -820,13 +817,16 @@ def replace_naics_w_naics_from_another_year(df_load, sectorsourcename):
     return df
 
 
-def compare_FBS_results(fbs1_load, fbs2_load, ignore_metasources=False):
+def compare_FBS_results(fbs1_load, fbs2_load, ignore_metasources=False,
+                        download_if_missing=True):
     """
-    Compare a parquet on Data Commons to a parquet stored locally
+    Compare flows for two parquets
     :param fbs1_load: df, fbs format
     :param fbs2_load: df, fbs format
     :param ignore_metasources: bool, True to compare fbs without
-    matching metasources
+        matching metasources
+    :param download_if_missing: bool, set to False if do not want to
+        download a missing FBS
     :return: df, comparison of the two dfs
     """
     import flowsa
