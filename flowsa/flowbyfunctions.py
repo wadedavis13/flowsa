@@ -248,6 +248,7 @@ def sector_aggregation(df_load):
                         left_on=['SectorConsumedBy'], right_on=[sector_merge]
                         ).rename(
             columns={sector_add: 'SCB'}).drop(columns=sector_merge)
+        df1 = replace_NoneType_with_empty_cells(df1)
 
         # second dataframe where length is l - 1
         df2 = df[(df['SectorProducedBy'].isin(sector_add_list) |
