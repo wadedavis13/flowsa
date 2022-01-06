@@ -121,6 +121,8 @@ def aggregator(df, groupbycols):
                       if e in df.columns.values.tolist()]
 
     df_dfg = df.groupby(groupbycols).agg({'FlowAmount': ['sum']})
+    if 'HelperFlow' in df.columns:
+        df_dfg = df.groupby(groupbycols).agg({'HelperFlow': ['sum']})
 
     # run through other columns creating weighted average
     for e in column_headers:
