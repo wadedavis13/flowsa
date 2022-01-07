@@ -14,7 +14,7 @@ from flowsa.dataclean import replace_strings_with_NoneType, \
 from flowsa.common import US_FIPS, sector_level_key, \
     check_activities_sector_like, load_crosswalk, \
     SECTOR_SOURCE_NAME, fba_activity_fields, \
-    fba_default_grouping_fields, fips_number_key
+    fba_default_grouping_fields, fips_number_key, load_sector_length_cw_melt
 from flowsa.settings import log, vLog, vLogDetailed
 
 
@@ -368,15 +368,33 @@ def compare_activity_to_sector_flowamounts(fba_load, fbs_load,
 
         fbs = replace_NoneType_with_empty_cells(fbs)
 
-        fbs['ProducedLength'] = fbs['SectorProducedBy'].str.len()
-        fbs['ConsumedLength'] = fbs['SectorConsumedBy'].str.len()
-        fbs['SectorLength'] = fbs[['ProducedLength',
-                                   'ConsumedLength']].max(axis=1)
-        fbs.loc[:, 'Location'] = US_FIPS
+        # add sector length crosswalk to determine the sector lengths of the
+        # columns because household/government codes are not based on string
+        # length
+
+        cw = load_sector_length_cw_melt()
+
+        # merge dfs assigning sector length
+        sectype_list = ['Produced', 'Consumed']
+        for s in sectype_list:
+            fbs = fbs.merge(cw, how='left', left_on=[f'Sector{s}By'],
+                            right_on='Sector'
+                            ).rename(columns={'SectorLength': f'{s}Length'}
+                                     ).drop(columns='Sector')
+        # only keep rows where produced and consumed lengths are equal to
+        # avoid double counting caused by government/household sector codes
+        # at the same string length representing different naics lengths
+        fbs['SectorLength'] = fbs[['ProducedLength', 'ConsumedLength']].min(
+            axis=1)
+        for l in ['ProducedLength', 'ConsumedLength']:
+            fbs[l] = fbs[l].fillna(fbs['SectorLength'])
+        fbs2 = fbs[fbs['ProducedLength'] == fbs['ConsumedLength']]
+
+        fbs2.loc[:, 'Location'] = US_FIPS
         group_cols = ['ActivityProducedBy', 'ActivityConsumedBy', 'Flowable',
                       'Unit', 'FlowType', 'Context', 'Location',
                       'LocationSystem', 'Year', 'SectorLength']
-        fbs_agg = aggregator(fbs, group_cols)
+        fbs_agg = aggregator(fbs2, group_cols)
         fbs_agg.rename(columns={'FlowAmount': 'FBS_amount'}, inplace=True)
 
         # merge compare 1 and compare 2
