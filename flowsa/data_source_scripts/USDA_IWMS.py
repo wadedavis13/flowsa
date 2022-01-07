@@ -177,7 +177,7 @@ def iwms_aggregation(primary_df, secondary_df):
     df = pd.merge(primary_df, land_sub, how='right')
     df['HelperFlow'] = df['HelperFlow'].fillna(1)
     # drop rows where flow is 0
-    df = df[df['FlowAmount'] != 0]
+    df = df[df['FlowAmount'] != 0].reset_index(drop=True)
     # reset hay sectors and rename
     df['SectorConsumedBy'] = np.where(df['SectorConsumedBy'].isin([
         '111940A', '111940B']), '11194', df['SectorConsumedBy'])
