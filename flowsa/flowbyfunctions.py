@@ -233,8 +233,11 @@ def sector_aggregation(df_load):
 
         # df where either sector column is length or both columns are
 
-        df1 = df[(df['SectorProducedBy'].isin(sector_merge_list) |
-                 df['SectorConsumedBy'].isin(sector_merge_list)
+        df1 = df[(df['SectorProducedBy'].isin(sector_merge_list) &
+                  (df['SectorConsumedBy'] == '')
+                  ) | (
+                (df['SectorProducedBy'] == '') &
+                df['SectorConsumedBy'].isin(sector_merge_list)
                   ) | (
                 df['SectorProducedBy'].isin(sector_merge_list) &
                 df['SectorConsumedBy'].isin(sector_merge_list))]
