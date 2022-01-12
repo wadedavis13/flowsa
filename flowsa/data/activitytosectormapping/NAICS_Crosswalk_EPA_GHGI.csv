@@ -149,7 +149,7 @@ EPA_GHGI_T_5_7,Sheep,NAICS_2012_Code,11241,,112A00
 EPA_GHGI_T_5_7,Swine,NAICS_2012_Code,1122,,112A00
 EPA_GHGI_T_5_7,Poultry,NAICS_2012_Code,1123,,112300
 EPA_GHGI_T_4_46,Acrylonitrile,NAICS_2012_Code,325199,,325411 (incorrect in original?)
-EPA_GHGI_T_4_46,Carbon Black,NAICS_2012_Code,325180,,3252A0
+EPA_GHGI_T_4_46,Carbon Black,NAICS_2012_Code,325180,,3252A0 (incorrect in original?)
 EPA_GHGI_T_4_46,Ethylene,NAICS_2012_Code,324110,,324110
 EPA_GHGI_T_4_46,Ethylene Dichloride,NAICS_2012_Code,325120,,not mapped
 EPA_GHGI_T_4_46,Ethylene Oxide,NAICS_2012_Code,325199,,325411 (incorrect in original?)
@@ -252,6 +252,14 @@ EPA_GHGI_T_3_8,Coal Electric Power,NAICS_2012_Code,2211,,"Commodity: 221100 (or 
 EPA_GHGI_T_3_8,Fuel Oil Electric Power,NAICS_2012_Code,2211,,"Commodity: 221100 (or I: 221100, S00101, S00202)"
 EPA_GHGI_T_3_8,Natural gas Electric Power,NAICS_2012_Code,2211,,"Commodity: 221100 (or I: 221100, S00101, S00202)"
 EPA_GHGI_T_3_8,Wood Electric Power,NAICS_2012_Code,2211,,"Commodity: 221100 (or I: 221100, S00101, S00202)"
+EPA_GHGI_T_3_8,Coal Electric Power,NAICS_2012_Code,S00101,,
+EPA_GHGI_T_3_8,Fuel Oil Electric Power,NAICS_2012_Code,S00101,,
+EPA_GHGI_T_3_8,Natural gas Electric Power,NAICS_2012_Code,S00101,,
+EPA_GHGI_T_3_8,Wood Electric Power,NAICS_2012_Code,S00101,,
+EPA_GHGI_T_3_8,Coal Electric Power,NAICS_2012_Code,S00202,,
+EPA_GHGI_T_3_8,Fuel Oil Electric Power,NAICS_2012_Code,S00202,,
+EPA_GHGI_T_3_8,Natural gas Electric Power,NAICS_2012_Code,S00202,,
+EPA_GHGI_T_3_8,Wood Electric Power,NAICS_2012_Code,S00202,,
 EPA_GHGI_T_3_8,Coal Residential,NAICS_2012_Code,F01000,,F01000
 EPA_GHGI_T_3_8,Fuel Oil Residential,NAICS_2012_Code,F01000,,
 EPA_GHGI_T_3_8,Natural Gas Residential,NAICS_2012_Code,F01000,,
