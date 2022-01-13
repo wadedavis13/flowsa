@@ -163,7 +163,7 @@ def check_if_location_systems_match(df1, df2):
                      "might lose county level data")
 
 
-def check_allocation_ratios(flow_alloc_df_load, activity_set, config, attr):
+def check_allocation_ratios(flow_alloc_df_load, config, attr, sectorcol):
     """
     Check for issues with the flow allocation ratios
     :param flow_alloc_df_load: df, includes 'FlowAmountRatio' column
@@ -173,23 +173,26 @@ def check_allocation_ratios(flow_alloc_df_load, activity_set, config, attr):
     :return: print out information regarding allocation ratios,
              save csv of results to local directory
     """
+
+    if sectorcol == 'SectorProducedBy':
+        activitycol = 'ActivityProducedBy'
+    else:
+        activitycol = 'ActivityConsumedBy'
     # if in the attr dictionary, merge columns are identified,
     # the merge columns need to be accounted for in the grouping/checking of
     # allocation ratios
+    subset_cols = [activitycol, 'Location', 'Context',
+                   'SectorLength', 'FlowAmountRatio']
+    groupcols = [activitycol, 'Location', 'Context', 'SectorLength']
     if 'allocation_merge_columns' in attr:
-        subset_cols = ['FBA_Activity', 'Location', 'SectorLength',
-                       'FlowAmountRatio'] + attr['allocation_merge_columns']
-        groupcols = ['FBA_Activity', 'Location',
-                     'SectorLength'] + attr['allocation_merge_columns']
-    else:
-        subset_cols = ['FBA_Activity', 'Location',
-                       'SectorLength', 'FlowAmountRatio']
-        groupcols = ['FBA_Activity', 'Location', 'SectorLength']
+        subset_cols = subset_cols + attr['allocation_merge_columns']
+        groupcols = groupcols + attr['allocation_merge_columns']
 
     # create column of sector lengths
-    flow_alloc_df =\
-        flow_alloc_df_load.assign(
-            SectorLength=flow_alloc_df_load['Sector'].str.len())
+    cw = load_sector_length_cw_melt()
+    flow_alloc_df = flow_alloc_df_load.merge(
+        cw, how='left', left_on=[sectorcol],  right_on='Sector').drop(
+        columns='Sector')
     # subset df
     flow_alloc_df2 = flow_alloc_df[subset_cols]
     # sum the flow amount ratios by location and sector length
@@ -217,16 +220,15 @@ def check_allocation_ratios(flow_alloc_df_load, activity_set, config, attr):
 
     # add to validation log
     log.info('Save the summary table of flow allocation ratios for each '
-             'sector length for %s in validation log', activity_set)
+             'sector length in validation log')
     # if df not empty, print, if empty, print string
     if flow_alloc_df5.empty:
-        vLogDetailed.info('Flow allocation ratios for %s '
-                          'all round to 1', activity_set)
+        vLogDetailed.info('Flow allocation ratios '
+                          'all round to 1')
 
     else:
-        vLogDetailed.info('Flow allocation ratios for %s: '
-                          '\n {}'.format(flow_alloc_df5.to_string()),
-                          activity_set)
+        vLogDetailed.info('Flow allocation ratios: '
+                          '\n {}'.format(flow_alloc_df5.to_string()))
 
 
 def calculate_flowamount_diff_between_dfs(dfa_load, dfb_load):
