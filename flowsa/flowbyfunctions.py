@@ -921,3 +921,66 @@ def load_fba_w_standardized_units(datasource, year, **kwargs):
         fba = standardize_units(fba)
 
     return fba
+
+
+def subset_and_merge_df_by_sector_lengths(df, length1, length2):
+
+    sector_merge = 'NAICS_' + str(length1)
+    sector_add = 'NAICS_' + str(length2)
+
+    # subset the df by naics length
+    cw_load = load_crosswalk("sector_length")
+    cw = cw_load[[sector_merge, sector_add]].drop_duplicates().reset_index(
+        drop=True)
+
+    sector_merge_list = cw[sector_merge].values.tolist()
+    sector_add_list = cw[sector_add].values.tolist()
+
+    # df where either sector column is length or both columns are
+
+    df1 = df[(df['SectorProducedBy'].isin(sector_merge_list) &
+              (df['SectorConsumedBy'] == '')
+              ) | (
+            (df['SectorProducedBy'] == '') &
+            df['SectorConsumedBy'].isin(sector_merge_list)
+              ) | (
+            df['SectorProducedBy'].isin(sector_merge_list) &
+            df['SectorConsumedBy'].isin(sector_merge_list))]
+
+    # second dataframe where length is length2
+    df2 = df[(df['SectorProducedBy'].isin(sector_add_list) &
+              (df['SectorConsumedBy'] == '')
+              ) | (
+            (df['SectorProducedBy'] == '') &
+            df['SectorConsumedBy'].isin(sector_add_list)
+              ) | (
+            df['SectorProducedBy'].isin(sector_add_list) &
+            df['SectorConsumedBy'].isin(sector_add_list))]
+
+    # merge the crosswalk to create new columns where sector length equals
+    # "length1"
+    df2 = df2.merge(cw, how='left', left_on=['SectorProducedBy'],
+                    right_on=[sector_add]).rename(
+        columns={sector_merge: 'SPB_tmp'}).drop(columns=sector_add)
+    df2 = df2.merge(cw, how='left',
+                    left_on=['SectorConsumedBy'], right_on=[sector_add]
+                    ).rename(
+        columns={sector_merge: 'SCB_tmp'}).drop(columns=sector_add)
+    df2 = replace_NoneType_with_empty_cells(df2)
+
+    # merge the dfs
+    merge_cols = list(df1.select_dtypes(include=['object', 'int']).columns)
+    # also drop activity and description cols
+    merge_cols = [c for c in merge_cols
+                  if c not in ['SectorConsumedBy', 'SectorProducedBy',
+                               'Description']]
+
+    dfm = df1.merge(df2[merge_cols + ['SPB_tmp', 'SCB_tmp']],
+                    how='outer',
+                    left_on=merge_cols + ['SectorProducedBy',
+                                          'SectorConsumedBy'],
+                    right_on=merge_cols + ['SPB_tmp', 'SCB_tmp'],
+                    indicator=True)
+    dfm = replace_strings_with_NoneType(dfm)
+
+    return dfm
