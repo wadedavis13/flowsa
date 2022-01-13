@@ -474,21 +474,20 @@ def compare_fba_geo_subset_and_fbs_output_totals(
               'the subset Flow-By-Sector FlowAmount total.')
 
     # determine activity scale
+    activity_geoscale = source_attr['geographic_scale']
     if 'geographic_scale' in activity_attr:
         activity_geoscale = activity_attr.get('geographic_scale')
-    else:
-        activity_geoscale = source_attr['geographic_scale']
 
     # determine from scale
+    from_scale = activity_geoscale
     if fips_number_key[source_attr['geographic_scale']] < \
             fips_number_key[activity_geoscale]:
         from_scale = source_attr['geographic_scale']
-    else:
-        from_scale = activity_geoscale
 
     # extract relevant geoscale data or aggregate existing data
     fba = subset_df_by_geoscale(fba_load, from_scale,
                                 method['target_geoscale'])
+
     if check_activities_sector_like(source_name):
         # if activities are sector-like, run sector aggregation and then
         # subset df to only keep NAICS2
@@ -498,9 +497,6 @@ def compare_fba_geo_subset_and_fbs_output_totals(
         # rename the activity cols to sector cols for purposes of aggregation
         fba = fba.rename(columns={'ActivityProducedBy': 'SectorProducedBy',
                                   'ActivityConsumedBy': 'SectorConsumedBy'})
-        group_cols_agg = ['Class', 'Context', 'Unit', 'Location',
-                          'LocationSystem', 'SectorProducedBy',
-                          'SectorConsumedBy']
         fba = sector_aggregation(fba)
         # subset fba to only include NAICS2
         fba = replace_NoneType_with_empty_cells(fba)
@@ -520,9 +516,6 @@ def compare_fba_geo_subset_and_fbs_output_totals(
 
     # fbs
     fbs = fbs_load[col_subset]
-    # drop duplicates that exist because household/government codes are
-    # duplicated for multiple sector lengths
-    fbs = fbs.drop_duplicates()
     fbs_agg = aggregator(fbs, group_cols)
     fbs_agg.rename(columns={'FlowAmount': 'FBS_amount',
                             'Unit': 'FBS_unit'}, inplace=True)
