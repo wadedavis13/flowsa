@@ -292,13 +292,12 @@ def fba_multiplication(df_load, sector_col):
     return modified_fba_allocation
 
 
-def fba_proportional(df_load, col_for_alloc_ratios):
-    # disaggregate to capture single parent to child naics
-    df = sector_disaggregation(df_load)
-    # run sector aggregation to determine values at NAICS2
-    df = sector_aggregation(df)
+
+def fba_proportional(primary_df, primary_config, col_for_alloc_ratios, method):
+    # drop all rows where helperflow is null
+    df = primary_df.dropna(subset=['HelperFlow']).reset_index(drop=True)
     modified_fba_allocation = proportional_allocation_by_location_and_activity(
-            df, col_for_alloc_ratios)
+            df, method, primary_config, col_for_alloc_ratios)
     modified_fba_allocation.loc[:, 'FlowAmount'] = \
         modified_fba_allocation['FlowAmount'] * \
         modified_fba_allocation['FlowAmountRatio']
