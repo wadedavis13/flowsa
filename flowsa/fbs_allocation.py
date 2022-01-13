@@ -41,27 +41,12 @@ def direct_allocation_method(fbs, k, names, method):
     # for each activity, if activities are not sector like,
     # check that there is no data loss
     if check_activities_sector_like(k) is False:
-        activity_list = []
-        n_allocated = []
-        for n in names:
-            # avoid double counting by dropping n from the df after calling on
-            # n, in the event both ACB and APB values exist
-            fbs = fbs[~((fbs[fba_activity_fields[0]].isin(n_allocated)) |
-                      (fbs[fba_activity_fields[1]].isin(n_allocated))
-                        )].reset_index(drop=True)
-            log.debug('Checking for %s at %s',
-                      n, method['target_sector_level'])
-            fbs_subset = \
-                fbs[(fbs[fba_activity_fields[0]] == n) |
-                    (fbs[fba_activity_fields[1]] == n)].reset_index(drop=True)
-            # check if an Activity maps to more than one sector,
-            # if so, equally allocate
-            fbs_subset = equal_allocation(fbs_subset)
-            fbs_subset = equally_allocate_parent_to_child_naics(fbs_subset, method['target_sector_level'])
-            activity_list.append(fbs_subset)
-            n_allocated.append(n)
-        fbs = pd.concat(activity_list, ignore_index=True)
-    return fbs
+        # check if an Activity maps to more than one sector,
+        # if so, equally allocate
+        fbs2 = equal_allocation(fbs)
+        fbs3 = equally_allocate_parent_to_child_naics(
+            fbs2, method['target_sector_level'])
+    return fbs3
 
 
 def function_allocation_method(flow_subset_mapped, primary_source, names,
