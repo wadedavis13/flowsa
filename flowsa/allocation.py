@@ -7,11 +7,13 @@ Methods of allocating datasets
 """
 import pandas as pd
 from flowsa.settings import log
-from flowsa.common import fbs_activity_fields, sector_level_key, load_crosswalk
+from flowsa.common import fbs_activity_fields, sector_level_key, \
+    load_crosswalk, load_sector_length_cw_melt
 from flowsa.settings import vLogDetailed
 from flowsa.dataclean import replace_NoneType_with_empty_cells, \
     replace_strings_with_NoneType
 from flowsa.flowbyfunctions import sector_aggregation, sector_disaggregation
+from flowsa.validation import check_allocation_ratios
 
 
 def allocate_by_sector(df_w_sectors, attr, allocation_method,
@@ -148,7 +150,8 @@ def proportional_allocation(df, attr):
     return allocation_df
 
 
-def proportional_allocation_by_location_and_activity(df_load, sectorcolumn):
+def proportional_allocation_by_location_and_activity(
+        df_load, method, df_config, sectorcolumn):
     """
     Creates a proportional allocation within each aggregated
     sector within a location
@@ -163,49 +166,41 @@ def proportional_allocation_by_location_and_activity(df_load, sectorcolumn):
 
     # want to create denominator based on shortest length naics for each
     # activity/location
-    grouping_cols = [e for e in ['FlowName', 'Location', 'Activity',
+    grouping_cols = [e for e in ['Location', 'Activity',
                                  'ActivityConsumedBy', 'ActivityProducedBy',
-                                 'Class', 'SourceName', 'Unit', 'FlowType',
-                                 'Compartment', 'Year']
-                     if e in df.columns.values.tolist()]
-    activity_cols = [e for e in ['Activity', 'ActivityConsumedBy',
-                                 'ActivityProducedBy']
+                                 'FlowUUID']
                      if e in df.columns.values.tolist()]
     # trim whitespace
     df[sectorcolumn] = df[sectorcolumn].str.strip()
 
     # load crosswalk and subset df by values in the naics crosswalk length
     # load naics length crosswwalk
-    cw_load = load_crosswalk('sector_length')
-    cw_melt = cw_load.melt(var_name="sLen", value_name=sectorcolumn
-                           ).drop_duplicates().reset_index(drop=True)
-    cw_melt['sLen'] = cw_melt['sLen'].str.replace(
-        'NAICS_', "")
-    cw_melt['sLen'] = pd.to_numeric(cw_melt['sLen'])
+    cw_melt = load_sector_length_cw_melt()
     # to create the denominator dataframe first add a column that captures
     # the sector length based on the sector length crosswalk, not on the
     # sector string length because of household and government sectors
-    denom_df = df.merge(cw_melt, how='left')
-    denom_df = denom_df[denom_df['sLen'] == denom_df.groupby(activity_cols)[
-        'sLen'].transform(min)].drop(columns='sLen')
-    denom_df['Denominator'] = \
-        denom_df.groupby(grouping_cols)['HelperFlow'].transform('sum')
+    # first subset data to drop the 'FlowAmount' because denominator is
+    # based on helper flow
+    df_sub = df[grouping_cols + ['SectorProducedBy', 'SectorConsumedBy',
+                                 'HelperFlow']]
+    df_sub = df_sub.reset_index(drop=True)
+    df_sub = sector_aggregation(df_sub)
+    df_sub = replace_NoneType_with_empty_cells(df_sub)
+    denom_df = df_sub.merge(cw_melt, how='left', left_on=sectorcolumn,
+                        right_on='Sector').drop(columns='Sector')
+    denom_df2 = denom_df[denom_df['SectorLength'] == denom_df.groupby(
+        grouping_cols)['SectorLength'].transform(min)].drop(
+        columns='SectorLength')
+    denom_df2['Denominator'] = \
+        denom_df2.groupby(grouping_cols)['HelperFlow'].transform('sum')
 
-    # list of column headers, that if exist in df, should be aggregated
-    # using the weighted avg fxn
-    possible_column_headers = ('Location', 'LocationSystem', 'Year',
-                               'Activity', 'ActivityConsumedBy',
-                               'ActivityProducedBy')
-    # list of column headers that do exist in the df being aggregated
-    column_headers = [e for e in possible_column_headers
-                      if e in denom_df.columns.values.tolist()]
-    merge_headers = column_headers.copy()
-    column_headers.append('Denominator')
+    merge_headers = grouping_cols.copy()
+    grouping_cols.append('Denominator')
     # create subset of denominator values based on Locations and Activities
-    denom_df_2 = \
-        denom_df[column_headers].drop_duplicates().reset_index(drop=True)
+    denom_df3 = \
+        denom_df2[grouping_cols].drop_duplicates().reset_index(drop=True)
     # merge the denominator column with fba_w_sector df
-    allocation_df = df.merge(denom_df_2,
+    allocation_df = df.merge(denom_df3,
                              how='left',
                              left_on=merge_headers,
                              right_on=merge_headers)
