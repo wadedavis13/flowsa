@@ -520,6 +520,9 @@ def compare_fba_geo_subset_and_fbs_output_totals(
 
     # fbs
     fbs = fbs_load[col_subset]
+    # drop duplicates that exist because household/government codes are
+    # duplicated for multiple sector lengths
+    fbs = fbs.drop_duplicates()
     fbs_agg = aggregator(fbs, group_cols)
     fbs_agg.rename(columns={'FlowAmount': 'FBS_amount',
                             'Unit': 'FBS_unit'}, inplace=True)
