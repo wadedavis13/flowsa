@@ -991,3 +991,43 @@ def compare_df_units(df1_load, df2_load):
     # if list is not empty, print warning that units are different
     if list_comp:
         log.info('Merging df with %s and df with %s units', df1, df2)
+
+
+def check_for_data_loss_on_df_merge(df1_load, df2_load):
+    """
+
+    :param df1:
+    :return:
+    """
+    # drop all rows where helperflow is null in second df
+    df2 = df2_load.dropna(subset=['HelperFlow']).reset_index(drop=True)
+
+    subset_cols = ['SectorSourceName', 'ActivityProducedBy',
+                   'ActivityConsumedBy', 'SectorProducedBy',
+                   'SectorConsumedBy', 'Location']
+    df1 = df1_load[subset_cols].drop_duplicates()
+    df2 = df2[subset_cols].drop_duplicates()
+
+    # determine specific location combos where data gets dropped
+    df_diff1 = df1.merge(df2, how='outer', indicator=True).query('_merge=="left_only"').drop(
+        '_merge', axis=1).reset_index(drop=True)
+    # also look for any cases where regardless of location there is no data
+    df1 = df1.drop(columns='Location').drop_duplicates()
+    df2 = df2.drop(columns='Location').drop_duplicates()
+    df_diff2 = df1.merge(df2, how='outer', indicator=True).query('_merge=="left_only"').drop(
+        '_merge', axis=1).reset_index(drop=True)
+
+    # if len(df_diff1) > 0:
+    #     # save to validation log
+    #     log.info('There is data loss on df merge, saving results to '
+    #              'validation log')
+    #     vLogDetailed.info('Specific locations where data is dropped Results:'
+    #                       '\n {}'.format(df_diff1.to_string()))
+
+    if len(df_diff2) > 0:
+        # save to validation log
+        log.info('There is data loss on df merge, saving results to '
+                 'validation log')
+        vLogDetailed.info('These sectors are entirely lost from the '
+                          'dataframe after merge:'
+                          '\n {}'.format(df_diff2.to_string()))
