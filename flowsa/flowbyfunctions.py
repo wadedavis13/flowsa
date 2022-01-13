@@ -220,7 +220,6 @@ def sector_aggregation(df_load):
     # for loop in reverse order longest length naics minus 1 to 2
     # appends missing naics levels to df
     for i in range(length, 2, -1):
-
         sector_merge = 'NAICS_' + str(i)
         sector_add = 'NAICS_' + str(i-1)
 
@@ -286,7 +285,8 @@ def sector_aggregation(df_load):
             agg_sectors = aggregator(dfm, group_cols)
             # append to df
             agg_sectors = replace_NoneType_with_empty_cells(agg_sectors)
-            df = df.append(agg_sectors, sort=False).reset_index(drop=True)
+            df = df.append(agg_sectors, sort=False,
+                           ignore_index=True).reset_index(drop=True)
 
     # if activities are source-like, set col values as
     # copies of the sector columns
@@ -346,7 +346,7 @@ def sector_disaggregation(df_load):
         sector_add = 'NAICS_' + str(i+1)
 
         # subset the df by naics length
-        cw = cw_load[[sector_merge, sector_add]]
+        cw = cw_load[[sector_merge, sector_add]].drop_duplicates()
         # only keep the rows where there is only one value
         # in sector_add for a value in sector_merge
         cw = cw.drop_duplicates(
