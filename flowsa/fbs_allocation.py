@@ -235,25 +235,27 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     return flow_subset_mapped
 
 
-def allocate_source_w_secondary_source(primary_df, secondary_df,
-                                       allocation_method,
-                                       allocation_configuration):
+def allocate_source_w_secondary_source(primary_df, primary_config,
+                                       secondary_df, secondary_config,
+                                       allocation_method, method):
 
     # determine sector column with values
     sector_col = return_primary_sector_column(primary_df)
     # modify flow amounts using helper data
     if allocation_method == 'multiplication':
-        df = fba_multiplication(primary_df, sector_col)
+        df = fba_multiplication(primary_df, primary_config, secondary_df,
+                                secondary_config, allocation_method,
+                                sector_col, method)
     if allocation_method == 'proportional':
-        df = fba_proportional(primary_df, sector_col)
+        df = fba_proportional(primary_df, primary_config, sector_col, method)
     if allocation_method == 'proportional-flagged':
         df = fba_proportional_flagged(primary_df)
     if allocation_method == 'disaggregation':
         df = fba_disaggregation(primary_df, secondary_df,
-                                allocation_configuration)
+                                secondary_config)
     if allocation_method == 'weighted_avg':
         df = fba_weighted_avg(primary_df, secondary_df,
-                              allocation_configuration)
+                              secondary_config)
     # option to scale up fba values
     if allocation_method == 'scaled':
         df = fba_scale(primary_df)
