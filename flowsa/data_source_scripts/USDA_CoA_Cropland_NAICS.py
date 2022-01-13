@@ -180,7 +180,7 @@ def coa_cropland_naics_fba_wsec_cleanup(fba_w_sector, **kwargs):
 
 
 def disaggregate_df_to_naics6_w_cropland_naics(
-        df_to_disag, coa_niacs_df, attr):
+        df_to_disag, coa_naics_df, attr):
     """
     Disaggregate a df (typically usda coa cropland) to naics 6 using the
     cropland naics data
@@ -198,13 +198,13 @@ def disaggregate_df_to_naics6_w_cropland_naics(
 
     # use ratios of usda 'land in farms' to determine animal use of
     # pasturelands at 6 digit naics
-    df = disaggregate_pastureland(df_to_disag, coa_niacs_df, attr,
+    df = disaggregate_pastureland(df_to_disag, coa_naics_df, attr,
                                   sector_column=sector_col,
                                   parameter_drop=['1125'])
 
     # use ratios of usda 'harvested cropland' to determine missing 6 digit
     # naics
-    df2 = disaggregate_cropland(df, coa_niacs_df, sector_column=sector_col)
+    df2 = disaggregate_cropland(df, coa_naics_df, sector_column=sector_col)
 
     return df2
 
