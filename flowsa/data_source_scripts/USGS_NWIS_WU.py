@@ -589,7 +589,7 @@ def check_golf_and_crop_irrigation_totals(df_load):
 
     df_m3 = df_m2[df_m2['Diff'] >= 0.000001].reset_index(drop=True)
 
-    # rename irrigation to irrgation crop and append rows to df
+    # rename irrigation to irrigation crop and append rows to df
     df_m3.loc[df_m3['ActivityProducedBy'] ==
               'Irrigation', 'ActivityProducedBy'] = 'Irrigation Crop'
     df_m3.loc[df_m3['ActivityConsumedBy'] ==
@@ -597,9 +597,16 @@ def check_golf_and_crop_irrigation_totals(df_load):
     df_m3 = df_m3.drop(columns=['Golf_Amount', 'Golf_APB', 'Golf_ACB',
                                 'Crop_Amount', 'Crop_APB',
                                 'Crop_ACB', 'subset_sum', 'Diff'])
+    # reset description
+    crop_desc = df_c[['FlowName', 'Context',
+                      'Description']].drop_duplicates().rename(columns={
+        'Description': 'cropdesc'})
+    df_m4 = df_m3.merge(crop_desc, how='left')
+    df_m4['Description'] = df_m4['cropdesc']
+    df_m4 = df_m4.drop(columns='cropdesc')
 
     if len(df_m3) != 0:
-        df_w_missing_crop = df_load.append(df_m3, sort=True, ignore_index=True)
+        df_w_missing_crop = df_load.append(df_m4, sort=True, ignore_index=True)
         return df_w_missing_crop
     else:
         return df_load
