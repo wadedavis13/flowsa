@@ -281,6 +281,11 @@ def sector_disaggregation(df_load):
         s = pd.unique(df_load['SourceName'])[0]
         sector_like_activities = check_activities_sector_like(s)
 
+    # if activities are sector like, drop columns while running disag then
+    # add back in
+    if sector_like_activities:
+        df = df.drop(columns=['ActivityProducedBy', 'ActivityConsumedBy'])
+
     # for loop min length to 6 digits, where min length cannot be less than 2
     fields_list = []
     for i in range(2):
@@ -321,13 +326,13 @@ def sector_disaggregation(df_load):
             dfm2 = dfm2.drop(columns=[sector_merge, sector_add])
         dfm2 = replace_NoneType_with_empty_cells(dfm2)
 
-        # if activities are source-like, set col values
-        # as copies of the sector columns
-        if sector_like_activities:
-            df = df.assign(ActivityProducedBy=df['SectorProducedBy'])
-            df = df.assign(ActivityConsumedBy=df['SectorConsumedBy'])
-
         df = pd.concat([df, dfm2], ignore_index=True)
+
+    # if activities are source-like, set col values
+    # as copies of the sector columns
+    if sector_like_activities:
+        df = df.assign(ActivityProducedBy=df['SectorProducedBy'])
+        df = df.assign(ActivityConsumedBy=df['SectorConsumedBy'])
 
     return df
 
@@ -446,8 +451,7 @@ def return_activity_from_scale(df, provided_from_scale):
     unique_activities_sub = \
         unique_activity_names(df[df['Location'].isin(fips)])
 
-    # return df of the difference between unique_activities
-    # and unique_activities2
+    # return df of the differences
     df_missing = dataframe_difference(
         unique_activities, unique_activities_sub, which='left_only')
     # return df of the similarities between unique_activities
