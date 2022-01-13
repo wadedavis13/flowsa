@@ -344,7 +344,8 @@ def main(**kwargs):
                     (fbs_agg_2[fbs_activity_fields[0]].isnull()) &
                     (fbs_agg_2[fbs_activity_fields[1]].isin(sector_list))].\
                     reset_index(drop=True)
-                fbs_sector_subset = pd.concat([fbs_1, fbs_2, fbs_3])
+                fbs_sector_subset = pd.concat([fbs_1, fbs_2, fbs_3],
+                                              ignore_index=True)
 
                 # drop activity columns
                 fbs_sector_subset = fbs_sector_subset.drop(
