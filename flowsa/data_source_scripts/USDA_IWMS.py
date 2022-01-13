@@ -10,11 +10,9 @@ Water Management Survey data
 import json
 import pandas as pd
 import numpy as np
-from esupy.dqi import get_weighted_average
-from flowsa.common import US_FIPS, WITHDRAWN_KEYWORD, fba_wsec_default_grouping_fields
-from flowsa.dataclean import replace_strings_with_NoneType, replace_NoneType_with_empty_cells
+from flowsa.common import US_FIPS, WITHDRAWN_KEYWORD
 from flowsa.flowbyfunctions import assign_fips_location_system, \
-    load_fba_w_standardized_units
+    sector_disaggregation
 from flowsa.data_source_scripts.USDA_CoA_Cropland_NAICS import \
     disaggregate_pastureland, disaggregate_cropland
 
@@ -198,5 +196,6 @@ def iwms_aggregation(primary_df, secondary_df):
     # drop data from original, add in modified data
     df_o = primary_df[~primary_df['SectorConsumedBy'].isin(['111940A', '111940B'])]
     df4 = pd.concat([df_o, df3], ignore_index=True)
+    df5 = sector_disaggregation(df4)
 
-    return df4
+    return df5
