@@ -307,13 +307,22 @@ def allocate_source_w_secondary_source(primary_df, primary_config,
     return df3
 
 
-def fba_multiplication(df_load, sector_col):
+def fba_multiplication(primary_df, primary_config, secondary_df,
+                       secondary_config, allocation_method, sector_col,
+                       method):
+    # todo: change to loop through geo scales one level at a time
     # if missing values (na or 0), replace with national level values
-    replacement_values = df_load[df_load['Location'] == US_FIPS]
-    replacement_values = replacement_values.rename(
-        columns={"HelperFlow": 'ReplacementValue'})
-    modified_fba_allocation = df_load.merge(
-        replacement_values[[sector_col, 'ReplacementValue']], how='left')
+    # reload the secondary data source, this time skipping the geoscale subset
+    # replacement_df = load_allocation_fba(
+    #     secondary_config, method, primary_config,
+    #     download_FBA_if_missing=False, subset_by_geoscale=False)
+    replacement_df = secondary_df[secondary_df['Location'] ==
+                                        US_FIPS].reset_index(drop=True)
+
+    replacement_df = replacement_df.rename(
+        columns={"FlowAmount": 'ReplacementValue'})
+    modified_fba_allocation = primary_df.merge(
+        replacement_df[[sector_col, 'ReplacementValue']], how='left')
     modified_fba_allocation.loc[:, 'HelperFlow'] = \
         modified_fba_allocation['HelperFlow'].fillna(
         modified_fba_allocation['ReplacementValue'])
@@ -321,7 +330,10 @@ def fba_multiplication(df_load, sector_col):
         np.where(modified_fba_allocation['HelperFlow'] == 0,
                  modified_fba_allocation['ReplacementValue'],
                  modified_fba_allocation['HelperFlow'])
+    modified_fba_allocation = modified_fba_allocation.drop(
+        columns='ReplacementValue')
 
+    # todo: modify units
     # replace non-existent helper flow values with a 0,
     # so after multiplying, don't have incorrect value associated with
     # new unit
@@ -330,8 +342,15 @@ def fba_multiplication(df_load, sector_col):
     modified_fba_allocation.loc[:, 'FlowAmount'] = \
         modified_fba_allocation['FlowAmount'] * \
         modified_fba_allocation['HelperFlow']
-    return modified_fba_allocation
+    # drop rows with flow = 0
+    modified_fba_allocation2 = modified_fba_allocation[
+        modified_fba_allocation['FlowAmount'] != 0].reset_index(drop=True)
 
+    # determine if losing data during merge due to lack of data in the
+    # secondary set
+    check_for_data_loss_on_df_merge(primary_df, modified_fba_allocation2)
+
+    return modified_fba_allocation2
 
 
 def fba_proportional(primary_df, primary_config, secondary_config,
