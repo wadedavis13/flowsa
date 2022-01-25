@@ -389,13 +389,47 @@ def fba_proportional_flagged(df_load):
     return modified_fba_allocation
 
 
-def fba_disaggregation(primary_df, secondary_df, allocation_configuration):
-    df = dynamically_import_fxn(
-        allocation_configuration['allocation_source'],
-        allocation_configuration['disaggregation_fxn']
-    )(primary_df, secondary_df, allocation_configuration)
+def fba_proportional_disaggregation(primary_df, primary_config, secondary_df,
+                                    secondary_config, col_for_alloc_ratios,
+                                    method):
+    # if the secondary configuration has a parameter indicating that the
+    # secondary datasource is only meant to proportionally allocate a subset
+    # of the primary df, then subset the primary df into the df sectors
+    # meant to be allocated and another df not meant to be allocated,
+    # concat after proportional allocation
+    if 'df_subset' in secondary_config:
+        df = primary_df[primary_df[col_for_alloc_ratios].isin(
+            secondary_config['df_subset'])].reset_index(drop=True)
+        df_prim = primary_df[~primary_df[col_for_alloc_ratios].isin(
+            secondary_config['df_subset'])].reset_index(drop=True)
+    else:
+        df = primary_df.copy(deep=True)
+        df_prim = pd.DataFrame()
 
-    return df
+    # drop the sector columns in df subset that needs further disaggregation
+    df1 = df.drop(columns=['SectorProducedBy', 'ProducedBySectorType',
+                           'SectorConsumedBy', 'ConsumedBySectorType',
+                           'SectorSourceName'])
+    # remap to sectors, this time assume activity is aggregated
+    df2 = add_sectors_to_flowbyactivity(
+        df1, sectorsourcename=method['target_sector_source'],
+        overwrite_sectorlevel='aggregated')
+    # merge with allocation df
+    dfm = merge_fbas_by_geoscale(
+        df2, primary_config['geographic_scale'],
+        secondary_df, secondary_config['geographic_scale'])
+
+    # drop all rows where helperflow is null
+    dfm2 = dfm.dropna(subset=['HelperFlow']).reset_index(drop=True)
+    fba_mod = proportional_allocation_by_location_and_activity(
+        dfm2, method, primary_config, secondary_config, col_for_alloc_ratios)
+    fba_mod['FlowAmount'] = fba_mod['FlowAmount'] * fba_mod['FlowAmountRatio']
+
+    # if the df required subset, concat the two dfs
+    if not df_prim.empty:
+        fba_mod = pd.concat([fba_mod, df_prim])
+
+    return fba_mod
 
 
 def fba_weighted_avg(primary_df, secondary_df, allocation_configuration):
