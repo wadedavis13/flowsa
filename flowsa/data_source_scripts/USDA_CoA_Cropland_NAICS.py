@@ -11,8 +11,7 @@ import json
 import numpy as np
 import pandas as pd
 
-from flowsa.allocation import allocate_by_sector, \
-    equally_allocate_parent_to_child_naics
+from flowsa.allocation import equally_allocate_parent_to_child_naics
 from flowsa.common import WITHDRAWN_KEYWORD, US_FIPS, abbrev_us_state, \
     fba_wsec_default_grouping_fields, fbs_fill_na_dict, \
     fbs_default_grouping_fields
@@ -163,6 +162,12 @@ def coa_cropland_NAICS_parse(*, df_list, year, **_):
     df['DataReliability'] = 5  # tmp
     df['DataCollection'] = 2
     return df
+
+
+def coa_cropland_naics_fba_cleanup(fba_load, **kwargs):
+    # drop rows with "&'
+    fba = fba_load[~fba_load['ActivityConsumedBy'].str.contains('&')]
+    return fba
 
 
 def coa_cropland_naics_fba_wsec_cleanup(fba_w_sector, **kwargs):
