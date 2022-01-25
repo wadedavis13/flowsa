@@ -6,10 +6,9 @@ Functions to allocate data using additional data sources
 """
 
 import numpy as np
-from flowsa.common import US_FIPS, \
-    fba_mapped_wsec_default_grouping_fields, \
-    check_activities_sector_like, \
-    return_bea_codes_used_as_naics
+import pandas as pd
+from flowsa.common import US_FIPS, fba_mapped_wsec_default_grouping_fields, \
+    check_activities_sector_like, return_bea_codes_used_as_naics
 from flowsa.schema import flow_by_activity_mapped_wsec_fields
 from flowsa.settings import log
 from flowsa.validation import compare_df_units, check_for_data_loss_on_df_merge
@@ -67,21 +66,8 @@ def function_allocation_method(flow_subset_mapped, primary_source, names,
     return fbs
 
 
-def load_clean_allocation_fba(df_to_modify, alloc_method, alloc_config,
-                              names, method, primary_source, primary_config,
-                              download_FBA_if_missing):
-    """
-
-    :param df_to_modify:
-    :param alloc_method:
-    :param alloc_config:
-    :param names:
-    :param method:
-    :param primary_source:
-    :param primary_config:
-    :param download_FBA_if_missing:
-    :return:
-    """
+def load_allocation_fba(alloc_config, method, primary_config,
+                        download_FBA_if_missing, subset_by_geoscale=True):
     # add parameters to dictionary if exist in method yaml
     fba_dict = {}
     if 'flow' in alloc_config:
@@ -101,8 +87,31 @@ def load_clean_allocation_fba(df_to_modify, alloc_method, alloc_config,
                            flowclass=alloc_config['class'],
                            geoscale_from=alloc_config['geographic_scale'],
                            geoscale_to=primary_config['geographic_scale'],
+                           subset_by_geoscale=subset_by_geoscale,
                            download_FBA_if_missing=download_FBA_if_missing,
                            **fba_dict)
+    return fba_allocation_wsec
+
+
+def load_clean_allocation_fba(df_to_modify, alloc_method, alloc_config,
+                              names, method, primary_source, primary_config,
+                              download_FBA_if_missing,
+                              subset_by_geoscale=True):
+    """
+
+    :param df_to_modify:
+    :param alloc_method:
+    :param alloc_config:
+    :param names:
+    :param method:
+    :param primary_source:
+    :param primary_config:
+    :param download_FBA_if_missing:
+    :return:
+    """
+    fba_allocation_wsec = \
+        load_allocation_fba(alloc_config, method, primary_config,
+                        download_FBA_if_missing, subset_by_geoscale)
     # run sector disagg to capture any missing lower level naics that have a
     # singular parent to child relationship
     fba_allocation_wsec = sector_disaggregation(fba_allocation_wsec)
