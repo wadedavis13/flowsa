@@ -6,25 +6,23 @@ Functions to allocate data using additional data sources
 """
 
 import numpy as np
-import pandas as pd
-from flowsa.common import US_FIPS, fba_activity_fields, \
-    fbs_activity_fields, fba_mapped_wsec_default_grouping_fields, \
-    fba_wsec_default_grouping_fields, check_activities_sector_like, \
+from flowsa.common import US_FIPS, \
+    fba_mapped_wsec_default_grouping_fields, \
+    check_activities_sector_like, \
     return_bea_codes_used_as_naics
-from flowsa.schema import activity_fields, flow_by_activity_mapped_wsec_fields
+from flowsa.schema import flow_by_activity_mapped_wsec_fields
 from flowsa.settings import log
-from flowsa.validation import check_allocation_ratios, \
-    check_if_location_systems_match, compare_df_units
+from flowsa.validation import compare_df_units, check_for_data_loss_on_df_merge
 from flowsa.flowbyfunctions import collapse_activity_fields, \
     dynamically_import_fxn, sector_aggregation, sector_disaggregation, \
     subset_df_by_geoscale, return_primary_sector_column, \
     load_fba_w_standardized_units, aggregator
-from flowsa.allocation import allocate_by_sector, \
+from flowsa.allocation import equal_allocation, \
     proportional_allocation_by_location_and_activity, \
-    equally_allocate_parent_to_child_naics, equal_allocation
+    equally_allocate_parent_to_child_naics
 from flowsa.sectormapping import get_fba_allocation_subset, \
     add_sectors_to_flowbyactivity
-from flowsa.dataclean import replace_strings_with_NoneType, add_missing_flow_by_fields
+from flowsa.dataclean import add_missing_flow_by_fields
 from flowsa.validation import check_if_data_exists_at_geoscale
 
 
