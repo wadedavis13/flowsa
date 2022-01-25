@@ -399,7 +399,8 @@ def fba_scale(df_load):
 
 
 def load_map_clean_fba(method, attr, fba_sourcename, df_year, flowclass,
-                       geoscale_from, geoscale_to, **kwargs):
+                       geoscale_from, geoscale_to, subset_by_geoscale=True,
+                       **kwargs):
     """
     Load, clean, and map a FlowByActivity df
     :param method: dictionary, FBS method yaml
@@ -437,8 +438,9 @@ def load_map_clean_fba(method, attr, fba_sourcename, df_year, flowclass,
     check_if_data_exists_at_geoscale(fba, geoscale_from)
 
     # aggregate geographically to the scale of the flowbyactivty source,
-    # if necessary
-    fba = subset_df_by_geoscale(fba, geoscale_from, geoscale_to)
+    # if necessary unless fxn told to skip (default is true)
+    if subset_by_geoscale:
+        fba = subset_df_by_geoscale(fba, geoscale_from, geoscale_to)
 
     # subset based on yaml settings
     if 'flow' in kwargs:
