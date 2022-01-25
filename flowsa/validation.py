@@ -181,9 +181,12 @@ def check_allocation_ratios(flow_alloc_df_load, config, attr, sectorcol):
     # if in the attr dictionary, merge columns are identified,
     # the merge columns need to be accounted for in the grouping/checking of
     # allocation ratios
-    subset_cols = [activitycol, 'Location', 'Context',
-                   'SectorLength', 'FlowAmountRatio']
-    groupcols = [activitycol, 'Location', 'Context', 'SectorLength']
+    subset_cols = [e for e in flow_alloc_df_load if e in
+                   [activitycol, 'Location', 'Context', 'Compartment',
+                    'SectorLength', 'FlowAmountRatio']] + ['SectorLength']
+    groupcols = [e for e in flow_alloc_df_load if e in
+                 [activitycol, 'Location', 'Context',
+                  'Compartment']] + ['SectorLength']
     if 'allocation_merge_columns' in attr:
         subset_cols = subset_cols + attr['allocation_merge_columns']
         groupcols = groupcols + attr['allocation_merge_columns']
