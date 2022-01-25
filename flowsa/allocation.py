@@ -262,7 +262,7 @@ def equally_allocate_parent_to_child_naics(df_load, target_sector_level):
         sectype_list = ['Produced', 'Consumed']
         for s in sectype_list:
             rl = rl.merge(cw, how='left', left_on=[f'Sector{s}By'],
-                           right_on=nlength).rename(
+                          right_on=nlength).rename(
                 columns={'sector_count': f'{s}Count'})
             rl[f'Sector{s}By'] = rl[target_sector_level]
             rl = rl.drop(columns=[target_sector_level, nlength])
