@@ -180,10 +180,15 @@ def merge_fbas_by_geoscale(df1, df1_geoscale, df2, df2_geoscale):
                                  dfm['FlowAmount'],
                                  dfm['HelperFlow'])
     dfm = dfm.drop(columns=['Sector'])
-    # drop all rows where helperflow is null
-    dfm2 = dfm.dropna(subset=['HelperFlow']).reset_index(drop=True)
+    # note: do not drop rows where HelperFlow is 0 here because that 0 flow
+    # is needed in multiplication allocation where the 0 is replaced with
+    # data from other geoscales
 
-    return dfm2
+    # determine if losing data during merge due to lack of data in the
+    # secondary set
+    check_for_data_loss_on_df_merge(df1, dfm)
+
+    return dfm
 
 
 def dataset_allocation_method(flow_subset_mapped, attr, names, method,
