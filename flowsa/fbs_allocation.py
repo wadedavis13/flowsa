@@ -213,7 +213,8 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     # define a list of allocation methods where the two allocation FBAs
     # should not be merged/should not determine a "helper flow" prior to the
     # allocation method
-    allocation_exception_list = ['disaggregation', 'weighted_avg']
+    allocation_exception_list = ['proportional_disaggregation', 'weighted_avg']
+    subset_by_geoscale = True
     # todo: modify so can have unlimited number of allocation methods..
     # determine the allocation methods used to modify the source data. Loop
     # through the methods and loop through any further allocation methods
@@ -221,32 +222,41 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
     for alloc_method1, alloc_config1 in attr['allocation_method'].items():
         alloc_df1 = load_clean_allocation_fba(
             flow_subset_mapped, alloc_method1, alloc_config1, names, method,
-            primary_source, primary_config, download_FBA_if_missing)
+            primary_source, primary_config, download_FBA_if_missing,
+            subset_by_geoscale=subset_by_geoscale)
         if 'allocation_method' in alloc_config1:
             for alloc_method2, alloc_config2 in \
                     alloc_config1['allocation_method'].items():
+                if alloc_method2 == 'multiplication':
+                    subset_by_geoscale = False
                 alloc_df2 = load_clean_allocation_fba(
                     alloc_df1, alloc_method2, alloc_config2, names, method,
-                    primary_source, primary_config, download_FBA_if_missing)
+                    primary_source, primary_config, download_FBA_if_missing,
+                    subset_by_geoscale=subset_by_geoscale)
                 if 'allocation_method' in alloc_config2:
                     for alloc_method3, alloc_config3 in \
                             alloc_config2['allocation_method'].items():
+                        if alloc_method3 == 'multiplication':
+                            subset_by_geoscale = False
                         alloc_df3 = load_clean_allocation_fba(
                             alloc_df2, alloc_method3, alloc_config3, names,
                             method, primary_source, primary_config,
-                            download_FBA_if_missing)
+                            download_FBA_if_missing,
+                            subset_by_geoscale=subset_by_geoscale)
                         if alloc_method3 not in allocation_exception_list:
                             alloc_df2 = merge_fbas_by_geoscale(
                                 alloc_df2, alloc_config2['geographic_scale'],
                                 alloc_df3, alloc_config3['geographic_scale'])
                         alloc_df2 = allocate_source_w_secondary_source(
-                            alloc_df2, alloc_df3, alloc_method3, alloc_config3)
+                            alloc_df2, alloc_config2, alloc_df3,
+                            alloc_config3, alloc_method3, method)
                 if alloc_method2 not in allocation_exception_list:
                     alloc_df1 = merge_fbas_by_geoscale(
                         alloc_df1, alloc_config1['geographic_scale'],
                         alloc_df2, alloc_config2['geographic_scale'])
                 alloc_df1 = allocate_source_w_secondary_source(
-                    alloc_df1, alloc_df2, alloc_method2, alloc_config2)
+                    alloc_df1, alloc_config1, alloc_df2, alloc_config2,
+                    alloc_method2, method)
         if alloc_method1 not in allocation_exception_list:
             if 'geographic_scale' in attr:
                 activity_geoscale = attr.get('geographic_scale')
@@ -256,7 +266,8 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
                 flow_subset_mapped, activity_geoscale,
                 alloc_df1, alloc_config1['geographic_scale'])
         flow_subset_mapped = allocate_source_w_secondary_source(
-            flow_subset_mapped, alloc_df1, alloc_method1, alloc_config1)
+            flow_subset_mapped, attr, alloc_df1, alloc_config1,
+            alloc_method1, method)
 
     return flow_subset_mapped
 
@@ -273,12 +284,14 @@ def allocate_source_w_secondary_source(primary_df, primary_config,
                                 secondary_config, allocation_method,
                                 sector_col, method)
     if allocation_method == 'proportional':
-        df = fba_proportional(primary_df, primary_config, sector_col, method)
+        df = fba_proportional(primary_df, primary_config, secondary_config,
+                              sector_col, method)
     if allocation_method == 'proportional-flagged':
         df = fba_proportional_flagged(primary_df)
-    if allocation_method == 'disaggregation':
-        df = fba_disaggregation(primary_df, secondary_df,
-                                secondary_config)
+    if allocation_method == 'proportional_disaggregation':
+        df = fba_proportional_disaggregation(primary_df, primary_config,
+                                             secondary_df, secondary_config,
+                                             sector_col, method)
     if allocation_method == 'weighted_avg':
         df = fba_weighted_avg(primary_df, secondary_df,
                               secondary_config)
@@ -321,7 +334,9 @@ def fba_multiplication(df_load, sector_col):
 
 
 
-def fba_proportional(primary_df, primary_config, col_for_alloc_ratios, method):
+def fba_proportional(primary_df, primary_config, secondary_config,
+                     col_for_alloc_ratios, method):
+
     # drop all rows where helperflow is null
     df = primary_df.dropna(subset=['HelperFlow']).reset_index(drop=True)
     modified_fba_allocation = proportional_allocation_by_location_and_activity(
