@@ -72,12 +72,19 @@ source_names:
             clean_fba_fxn: coa_irrigated_cropland_fba_cleanup
             clean_fba_w_sec_fxn: coa_cropland_w_naics_cleanup
             allocation_method:
-              disaggregation:
+              proportional_disaggregation: # disaggregate pastureland
                 allocation_source: "USDA_CoA_Cropland_NAICS"
                 year: 2017
                 class: "Land"
+                flow:
+                  - 'FARM OPERATIONS'
                 geographic_scale: state
-                disaggregation_fxn: disaggregate_df_to_naics6_w_cropland_naics
+                df_subset: ['112']
+                # drop aquaculture sectors because pastureland not used for
+                # aquaculture
+                drop_sectors: ['1125']
+                clean_fba_fxn: coa_cropland_naics_fba_cleanup
+                clean_fba_w_sec_fxn: coa_cropland_naics_fba_wsec_cleanup
               multiplication:
                 allocation_source: USDA_IWMS
                 class: "Water"
