@@ -123,6 +123,20 @@ def load_clean_allocation_fba(df_to_modify, alloc_method, alloc_config,
     fba_allocation_wsec_sub = get_fba_allocation_subset(
         fba_allocation_wsec, primary_source, names,
         flowSubsetMapped=df_to_modify, allocMethod=alloc_method)
+    fba_allocation_wsec_sub = sector_disaggregation(fba_allocation_wsec_sub)
+
+    # if the method calls for certain parameters in the allocation df to be
+    # dropped, drop them here
+    if 'drop_sectors' in alloc_config:
+        # determine sector column with values
+        sector_col = return_primary_sector_column(fba_allocation_wsec)
+        log.info('Dropping all %s that begin with %s from %s, used for %s '
+                 'allocation of %s',
+                 sector_col, alloc_config['drop_sectors'], alloc_config[
+                     'allocation_source'], alloc_method, primary_source)
+        fba_allocation_wsec_sub = fba_allocation_wsec_sub[
+            ~fba_allocation_wsec_sub[sector_col].str.startswith(tuple(
+                alloc_config['drop_sectors']))]
 
     return fba_allocation_wsec_sub
 
