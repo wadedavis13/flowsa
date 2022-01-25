@@ -358,12 +358,11 @@ def fba_proportional(primary_df, primary_config, secondary_config,
 
     # drop all rows where helperflow is null
     df = primary_df.dropna(subset=['HelperFlow']).reset_index(drop=True)
-    modified_fba_allocation = proportional_allocation_by_location_and_activity(
-            df, method, primary_config, col_for_alloc_ratios)
-    modified_fba_allocation.loc[:, 'FlowAmount'] = \
-        modified_fba_allocation['FlowAmount'] * \
-        modified_fba_allocation['FlowAmountRatio']
-    return modified_fba_allocation
+    fba_mod = proportional_allocation_by_location_and_activity(
+            df, method, primary_config, secondary_config, col_for_alloc_ratios)
+    fba_mod['FlowAmount'] = fba_mod['FlowAmount'] * fba_mod['FlowAmountRatio']
+
+    return fba_mod
 
 
 def fba_proportional_flagged(df_load):
