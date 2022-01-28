@@ -286,20 +286,11 @@ def sector_disaggregation(df_load):
     if sector_like_activities:
         df = df.drop(columns=['ActivityProducedBy', 'ActivityConsumedBy'])
 
-    # for loop min length to 6 digits, where min length cannot be less than 2
-    fields_list = []
-    for i in range(2):
-        if not (df[fbs_activity_fields[i]] == "").all():
-            fields_list.append(fbs_activity_fields[i])
-
     # load naics 2 to naics 6 crosswalk
     cw_load = load_crosswalk('sector_length')
 
-    length = df[fields_list].apply(lambda x: x.str.len()).min().min()
-    if length < 2:
-        length = 2
     # appends missing naics levels to df
-    for i in range(length, 6):
+    for i in range(2, 6):
         dfm = subset_and_merge_df_by_sector_lengths(df, i, i+1)
 
         # only keep values in left column, meaning there are no less
@@ -320,7 +311,8 @@ def sector_disaggregation(df_load):
         # loop through and add additional naics
         sectype_list = ['Produced', 'Consumed']
         for s in sectype_list:
-            dfm2 = dfm2.merge(cw, how='left', left_on=[f'Sector{s}By'],
+            # inner join - only keep rows where there are data in the crosswalk
+            dfm2 = dfm2.merge(cw, how='inner', left_on=[f'Sector{s}By'],
                               right_on=sector_merge)
             dfm2[f'Sector{s}By'] = dfm2[sector_add]
             dfm2 = dfm2.drop(columns=[sector_merge, sector_add])
