@@ -79,10 +79,20 @@ source_names:
                 flow:
                   - 'FARM OPERATIONS'
                 geographic_scale: state
-                df_subset: ['112']
+                df_subset_keep: ['112']
                 # drop aquaculture sectors because pastureland not used for
                 # aquaculture
                 drop_sectors: ['1125']
+                clean_fba_fxn: coa_cropland_naics_fba_cleanup
+                clean_fba_w_sec_fxn: coa_cropland_naics_fba_wsec_cleanup
+              proportional_disaggregation: # disaggregate cropland
+                allocation_source: "USDA_CoA_Cropland_NAICS"
+                year: 2017
+                class: "Land"
+                flow:
+                  - 'AG LAND, CROPLAND, HARVESTED'
+                geographic_scale: state
+                df_subset_drop: ['112']
                 clean_fba_fxn: coa_cropland_naics_fba_cleanup
                 clean_fba_w_sec_fxn: coa_cropland_naics_fba_wsec_cleanup
               multiplication:
