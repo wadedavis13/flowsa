@@ -397,11 +397,16 @@ def fba_proportional_disaggregation(primary_df, primary_config, secondary_df,
     # of the primary df, then subset the primary df into the df sectors
     # meant to be allocated and another df not meant to be allocated,
     # concat after proportional allocation
-    if 'df_subset' in secondary_config:
+    if 'df_subset_keep' in secondary_config:
         df = primary_df[primary_df[col_for_alloc_ratios].isin(
-            secondary_config['df_subset'])].reset_index(drop=True)
+            secondary_config['df_subset_keep'])].reset_index(drop=True)
         df_prim = primary_df[~primary_df[col_for_alloc_ratios].isin(
-            secondary_config['df_subset'])].reset_index(drop=True)
+            secondary_config['df_subset_keep'])].reset_index(drop=True)
+    elif 'df_subset_drop' in secondary_config:
+        df = primary_df[~primary_df[col_for_alloc_ratios].isin(
+            secondary_config['df_subset_keep'])].reset_index(drop=True)
+        df_prim = primary_df[primary_df[col_for_alloc_ratios].isin(
+            secondary_config['df_subset_keep'])].reset_index(drop=True)
     else:
         df = primary_df.copy(deep=True)
         df_prim = pd.DataFrame()
