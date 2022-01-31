@@ -821,6 +821,31 @@ def load_fba_w_standardized_units(datasource, year, **kwargs):
     return fba
 
 
+def subset_df_by_sector_lengths(df_load, sector_length_list):
+    """
+
+    :param df_load:
+    :param sector_length_list: list (int) of the naics sector lengths that
+    should be subset
+    :return:
+    """
+    # subset the df by naics length
+    cw_load = load_sector_length_cw_melt()
+    cw = cw_load[cw_load['SectorLength'].isin(sector_length_list)]
+    sector_list = cw['Sector'].drop_duplicates().values.tolist()
+
+    df = replace_NoneType_with_empty_cells(df_load)
+    df = df[(df['SectorProducedBy'].isin(sector_list) &
+             (df['SectorConsumedBy'] == '')
+             ) | (
+            (df['SectorProducedBy'] == '') &
+            df['SectorConsumedBy'].isin(sector_list)
+    ) | (
+            df['SectorProducedBy'].isin(sector_list) &
+            df['SectorConsumedBy'].isin(sector_list))]
+    return df
+
+
 def subset_and_merge_df_by_sector_lengths(df, length1, length2):
 
     sector_merge = 'NAICS_' + str(length1)
@@ -831,29 +856,10 @@ def subset_and_merge_df_by_sector_lengths(df, length1, length2):
     cw = cw_load[[sector_merge, sector_add]].drop_duplicates().reset_index(
         drop=True)
 
-    sector_merge_list = cw[sector_merge].values.tolist()
-    sector_add_list = cw[sector_add].values.tolist()
-
     # df where either sector column is length or both columns are
-
-    df1 = df[(df['SectorProducedBy'].isin(sector_merge_list) &
-              (df['SectorConsumedBy'] == '')
-              ) | (
-            (df['SectorProducedBy'] == '') &
-            df['SectorConsumedBy'].isin(sector_merge_list)
-              ) | (
-            df['SectorProducedBy'].isin(sector_merge_list) &
-            df['SectorConsumedBy'].isin(sector_merge_list))]
-
+    df1 = subset_df_by_sector_lengths(df, [length1])
     # second dataframe where length is length2
-    df2 = df[(df['SectorProducedBy'].isin(sector_add_list) &
-              (df['SectorConsumedBy'] == '')
-              ) | (
-            (df['SectorProducedBy'] == '') &
-            df['SectorConsumedBy'].isin(sector_add_list)
-              ) | (
-            df['SectorProducedBy'].isin(sector_add_list) &
-            df['SectorConsumedBy'].isin(sector_add_list))]
+    df2 = subset_df_by_sector_lengths(df, [length2])
 
     # merge the crosswalk to create new columns where sector length equals
     # "length1"
