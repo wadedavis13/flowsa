@@ -86,6 +86,7 @@ def load_sector_length_cw_melt():
     cw_load = load_crosswalk('sector_length')
     cw_melt = cw_load.melt(var_name="SectorLength", value_name='Sector'
                            ).drop_duplicates().reset_index(drop=True)
+    cw_melt = cw_melt.dropna().reset_index(drop=True)
     cw_melt['SectorLength'] = cw_melt['SectorLength'].str.replace(
         'NAICS_', "")
     cw_melt['SectorLength'] = pd.to_numeric(cw_melt['SectorLength'])
