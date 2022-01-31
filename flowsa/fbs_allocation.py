@@ -8,20 +8,23 @@ Functions to allocate data using additional data sources
 import numpy as np
 import pandas as pd
 from flowsa.common import US_FIPS, fba_mapped_wsec_default_grouping_fields, \
-    check_activities_sector_like, return_bea_codes_used_as_naics
+    check_activities_sector_like, return_bea_codes_used_as_naics, \
+    load_crosswalk, fbs_activity_fields
 from flowsa.schema import flow_by_activity_mapped_wsec_fields
 from flowsa.settings import log
 from flowsa.validation import compare_df_units, check_for_data_loss_on_df_merge
 from flowsa.flowbyfunctions import collapse_activity_fields, \
     dynamically_import_fxn, sector_aggregation, sector_disaggregation, \
     subset_df_by_geoscale, return_primary_sector_column, \
-    load_fba_w_standardized_units, aggregator
+    load_fba_w_standardized_units, aggregator, \
+    subset_df_by_sector_lengths
 from flowsa.allocation import equal_allocation, \
     proportional_allocation_by_location_and_activity, \
     equally_allocate_parent_to_child_naics
 from flowsa.sectormapping import get_fba_allocation_subset, \
     add_sectors_to_flowbyactivity
-from flowsa.dataclean import add_missing_flow_by_fields
+from flowsa.dataclean import add_missing_flow_by_fields, \
+    replace_NoneType_with_empty_cells
 from flowsa.validation import check_if_data_exists_at_geoscale
 
 
@@ -114,31 +117,31 @@ def load_clean_allocation_fba(df_to_modify, alloc_method, alloc_config,
                         download_FBA_if_missing, subset_by_geoscale)
     # run sector disagg to capture any missing lower level naics that have a
     # singular parent to child relationship
-    fba_allocation_wsec = sector_disaggregation(fba_allocation_wsec)
+    fba_allocation_wsec2 = sector_disaggregation(fba_allocation_wsec)
 
     # subset fba datasets to only keep the sectors associated
     # with activity subset
     log.info("Subsetting %s for sectors in %s",
              alloc_config['allocation_source'], primary_source)
     fba_allocation_wsec_sub = get_fba_allocation_subset(
-        fba_allocation_wsec, primary_source, names,
+        fba_allocation_wsec2, primary_source, names,
         flowSubsetMapped=df_to_modify, allocMethod=alloc_method)
-    fba_allocation_wsec_sub = sector_disaggregation(fba_allocation_wsec_sub)
+    fba_allocation_wsec_sub2 = sector_disaggregation(fba_allocation_wsec_sub)
 
     # if the method calls for certain parameters in the allocation df to be
     # dropped, drop them here
     if 'drop_sectors' in alloc_config:
         # determine sector column with values
-        sector_col = return_primary_sector_column(fba_allocation_wsec)
+        sector_col = return_primary_sector_column(fba_allocation_wsec2)
         log.info('Dropping all %s that begin with %s from %s, used for %s '
                  'allocation of %s',
                  sector_col, alloc_config['drop_sectors'], alloc_config[
                      'allocation_source'], alloc_method, primary_source)
-        fba_allocation_wsec_sub = fba_allocation_wsec_sub[
-            ~fba_allocation_wsec_sub[sector_col].str.startswith(tuple(
+        fba_allocation_wsec_sub2 = fba_allocation_wsec_sub2[
+            ~fba_allocation_wsec_sub2[sector_col].str.startswith(tuple(
                 alloc_config['drop_sectors']))]
 
-    return fba_allocation_wsec_sub
+    return fba_allocation_wsec_sub2
 
 
 def merge_fbas_by_geoscale(df1, df1_geoscale, df2, df2_geoscale):
@@ -404,17 +407,74 @@ def fba_proportional_disaggregation(primary_df, primary_config, secondary_df,
             secondary_config['df_subset_keep'])].reset_index(drop=True)
     elif 'df_subset_drop' in secondary_config:
         df = primary_df[~primary_df[col_for_alloc_ratios].isin(
-            secondary_config['df_subset_keep'])].reset_index(drop=True)
+            secondary_config['df_subset_drop'])].reset_index(drop=True)
         df_prim = primary_df[primary_df[col_for_alloc_ratios].isin(
-            secondary_config['df_subset_keep'])].reset_index(drop=True)
+            secondary_config['df_subset_drop'])].reset_index(drop=True)
     else:
         df = primary_df.copy(deep=True)
         df_prim = pd.DataFrame()
 
+    # determine the rows within the df to further disaggregate that require
+    # disaggregation
+    # load naics length crosswwalk
+    # cw_load = load_crosswalk('sector_length')
+    cw_load = load_crosswalk('sector_length')
+
+    # find the longest length sector
+    maxlength = df[[fbs_activity_fields[0], fbs_activity_fields[1]]].apply(
+        lambda x: x.str.len()).max().max()
+    maxlength = int(maxlength)
+    dfs_list = []
+    for i in range(2, maxlength):
+        sectors = cw_load[[f'NAICS_{str(i)}', f'NAICS_{str(i+1)}']].\
+            drop_duplicates().reset_index(drop=True)
+
+        # subset df by length of i and create temporary sector columns
+        dfs1 = subset_df_by_sector_lengths(df, [i]).reset_index(drop=True)
+        for s in ['Produced', 'Consumed']:
+            dfs1 = dfs1.merge(sectors, how='left', left_on=[f'Sector{s}By'],
+                              right_on=f'NAICS_{str(i)}')
+            dfs1 = dfs1.rename(
+                columns={f'NAICS_{str(i)}': f'Sector{s}By_tmp',
+                         f'NAICS_{str(i+1)}': f'S{s}B'})
+        # drop any rows there there isn't a sector at a greater length
+        dfs1 = dfs1.dropna(
+            subset=['SProducedB', 'SConsumedB'], how='all').drop(columns=[
+            'SProducedB', 'SConsumedB']).reset_index(drop=True)
+
+        # subset df by length of i+1 and create temporary sector columns
+        dfs2 = subset_df_by_sector_lengths(df, [i+1]).reset_index(drop=True)
+        for s in ['Produced', 'Consumed']:
+            dfs2 = dfs2.merge(
+                sectors, how='left', left_on=[f'Sector{s}By'],
+                right_on=f'NAICS_{str(i+1)}').drop(columns=f'NAICS_{str(i+1)}')
+            dfs2 = dfs2.rename(columns={f'NAICS_{str(i)}': f'Sector{s}By_tmp'})
+        dfs2 = replace_NoneType_with_empty_cells(dfs2)
+
+        dfc = pd.concat([dfs1, dfs2], ignore_index=True)
+        # if duplicates drop all rows
+        dfc2 = dfc.drop_duplicates(subset=['Location',
+                                           'SectorProducedBy_tmp',
+                                           'SectorConsumedBy_tmp'],
+                                   keep=False).reset_index(drop=True)
+        # drop sector temp column
+        dfc2 = dfc2.drop(columns=['SectorProducedBy_tmp',
+                                  'SectorConsumedBy_tmp'])
+        # subset df to keep the sectors of length i
+        dfs3 = subset_df_by_sector_lengths(dfc2, [i]).reset_index(drop=True)
+        # append to df
+        dfs_list.append(dfs3)
+    dfs = pd.concat(dfs_list, ignore_index=True)
+
+    # drop rows in dfs from rows in df to avoid double counting - will
+    # concat at the end
+    df_nodisag = pd.merge(df, dfs, how='left', indicator=True).query(
+        '_merge=="left_only"').drop('_merge', axis=1)
+
     # drop the sector columns in df subset that needs further disaggregation
-    df1 = df.drop(columns=['SectorProducedBy', 'ProducedBySectorType',
-                           'SectorConsumedBy', 'ConsumedBySectorType',
-                           'SectorSourceName'])
+    df1 = dfs.drop(columns=['SectorProducedBy', 'ProducedBySectorType',
+                            'SectorConsumedBy', 'ConsumedBySectorType',
+                            'SectorSourceName'])
     # remap to sectors, this time assume activity is aggregated
     df2 = add_sectors_to_flowbyactivity(
         df1, sectorsourcename=method['target_sector_source'],
@@ -432,7 +492,7 @@ def fba_proportional_disaggregation(primary_df, primary_config, secondary_df,
 
     # if the df required subset, concat the two dfs
     if not df_prim.empty:
-        fba_mod = pd.concat([fba_mod, df_prim])
+        fba_mod = pd.concat([fba_mod, df_nodisag, df_prim])
 
     return fba_mod
 
