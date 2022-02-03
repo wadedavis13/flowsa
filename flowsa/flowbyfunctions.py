@@ -303,6 +303,8 @@ def sector_disaggregation(df_load):
 
         # subset the df by naics length
         cw = cw_load[[sector_merge, sector_add]]
+        # first drop all duplicates
+        cw = cw.drop_duplicates()
         # only keep the rows where there is only one value in sector_add for
         # a value in sector_merge
         cw = cw.drop_duplicates(subset=[sector_merge], keep=False).reset_index(
@@ -312,13 +314,14 @@ def sector_disaggregation(df_load):
         sectype_list = ['Produced', 'Consumed']
         for s in sectype_list:
             # inner join - only keep rows where there are data in the crosswalk
-            dfm2 = dfm2.merge(cw, how='inner', left_on=[f'Sector{s}By'],
+            dfm2 = dfm2.merge(cw, how='left', left_on=[f'Sector{s}By'],
                               right_on=sector_merge)
             dfm2[f'Sector{s}By'] = dfm2[sector_add]
             dfm2 = dfm2.drop(columns=[sector_merge, sector_add])
-        dfm2 = replace_NoneType_with_empty_cells(dfm2)
-
-        df = pd.concat([df, dfm2], ignore_index=True)
+        dfm3 = dfm2.dropna(subset=['SectorProducedBy', 'SectorConsumedBy'],
+                           how='all')
+        dfm3 = replace_NoneType_with_empty_cells(dfm3)
+        df = pd.concat([df, dfm3], ignore_index=True)
 
     # if activities are source-like, set col values
     # as copies of the sector columns
