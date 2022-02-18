@@ -206,6 +206,8 @@ def sector_aggregation(df_load):
         # subset df
         df_cols = [e for e in df.columns if e not in
                    ('ActivityProducedBy', 'ActivityConsumedBy')]
+        group_cols = [e for e in group_cols if e not in
+                      ('ActivityProducedBy', 'ActivityConsumedBy')]
         df = df[df_cols]
 
     # load naics length crosswwalk
