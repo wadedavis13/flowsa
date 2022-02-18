@@ -205,7 +205,7 @@ def disaggregate_df_to_naics6_w_cropland_naics(
     # pasturelands at 6 digit naics
     df = disaggregate_pastureland(df_to_disag, coa_naics_df, attr,
                                   sector_column=sector_col,
-                                  parameter_drop=['1125'])
+                                  drop_sectors=['1125'])
 
     # use ratios of usda 'harvested cropland' to determine missing 6 digit
     # naics
@@ -250,9 +250,10 @@ def disaggregate_pastureland(df_to_disag, coa_naics, attr,
             lambda x: x[0:3]) == '112']
         # drop rows with "&'
         df_f = df_f[~df_f['ActivityConsumedBy'].str.contains('&')]
-        if 'parameter_drop' in kwargs:
+        if 'drop_sectors' in kwargs:
             # drop aquaculture because pastureland not used for aquaculture
-            df_f = df_f[~df_f['ActivityConsumedBy'].isin(kwargs['parameter_drop'])]
+            df_f = df_f[~df_f['ActivityConsumedBy'].isin(
+                kwargs['drop_sectors'])]
         # estimate suppressed data by equal allocation
         df_f = equally_allocate_suppressed_parent_to_child_naics(
             df_f, 'SectorConsumedBy', fba_wsec_default_grouping_fields)
@@ -328,6 +329,7 @@ def disaggregate_cropland(df_to_disag, coa_naics, sector_column):
         drop=True)
     # drop the activities that include '&'
     naics = naics[~naics['ActivityConsumedBy'].str.contains('&')].reset_index(drop=True)
+
     # estimate suppressed data by equally allocating parent to child naics
     naics = equally_allocate_suppressed_parent_to_child_naics(
         naics, 'SectorConsumedBy', fba_wsec_default_grouping_fields)
