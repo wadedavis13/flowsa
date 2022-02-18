@@ -397,14 +397,30 @@ def map_fbs_flows(fbs, from_fba_source, primary_config,
     return fbs_mapped, mapping_files
 
 
-def get_sector_list(sector_level):
+def get_sector_list(sector_level, secondary_sector_level_dict=None):
     """
     Create a sector list at the specified sector level
     :param sector_level: str, NAICS level
+    :param secondary_sector_level_dict: dict, additional sectors to keep,
+    key is the secondary target NAICS level, value is a list of NAICS at the
+    "sector_level" that should also include a further disaggregated subset
+    of the data
+    ex. sector_level = 'NAICS_4'
+        secondary_sector_level_dict = {'NAICS_6': ['1133', '1125']}
     :return: list, sectors at specified sector level
     """
-
+    # load crosswalk
     cw = load_crosswalk('sector_length')
+    # sectors at primary sector level
     sector_list = cw[sector_level].unique().tolist()
+    # sectors at secondary subset level
+    if secondary_sector_level_dict is not None:
+        for k, v in secondary_sector_level_dict.items():
+            cw_melt = cw.melt(
+                id_vars=[k], var_name="NAICS_Length",
+                value_name="NAICS_Match").drop_duplicates()
+            cw_sub = cw_melt[cw_melt['NAICS_Match'].isin(v)]
+            sector_add = cw_sub[k].unique().tolist()
+            sector_list = sector_list + sector_add
 
     return sector_list
