@@ -10,7 +10,7 @@ import numpy as np
 from esupy.dqi import get_weighted_average
 import flowsa
 from flowsa.common import fbs_activity_fields, US_FIPS, get_state_FIPS, \
-    get_county_FIPS, update_geoscale, \
+    get_county_FIPS, update_geoscale, load_sector_length_cw_melt, \
     load_crosswalk, fbs_fill_na_dict, \
     fbs_collapsed_default_grouping_fields, \
     fbs_collapsed_fill_na_dict, fba_activity_fields, \
@@ -839,6 +839,18 @@ def subset_df_by_sector_lengths(df_load, sector_length_list):
     cw = cw_load[cw_load['SectorLength'].isin(sector_length_list)]
     sector_list = cw['Sector'].drop_duplicates().values.tolist()
 
+    df = subset_df_by_sector_list(df_load, sector_list)
+
+    return df
+
+
+def subset_df_by_sector_list(df_load, sector_list):
+    """
+
+    :param df_load:
+    :param sector_list:
+    :return:
+    """
     df = replace_NoneType_with_empty_cells(df_load)
     df = df[(df['SectorProducedBy'].isin(sector_list) &
              (df['SectorConsumedBy'] == '')
