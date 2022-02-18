@@ -99,7 +99,7 @@ def call_urls(*, url_list, source, year, config):
     :param config: dictionary, FBA yaml
     :return: list, dfs to concat and parse
     """
-# identify if url request requires cookies set
+    # identify if url request requires cookies set
     set_cookies = config.get('allow_http_request_cookies')
     confirm_gdrive = config.get('confirm_gdrive')
 
