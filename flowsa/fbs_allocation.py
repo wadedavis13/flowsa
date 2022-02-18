@@ -424,6 +424,8 @@ def fba_proportional_disaggregation(primary_df, primary_config, secondary_df,
     maxlength = df[[fbs_activity_fields[0], fbs_activity_fields[1]]].apply(
         lambda x: x.str.len()).max().max()
     maxlength = int(maxlength)
+    if maxlength < 6:
+        maxlength = maxlength + 1
     dfs_list = []
     for i in range(2, maxlength):
         sectors = cw_load[[f'NAICS_{str(i)}', f'NAICS_{str(i+1)}']].\
@@ -433,14 +435,14 @@ def fba_proportional_disaggregation(primary_df, primary_config, secondary_df,
         dfs1 = subset_df_by_sector_lengths(df, [i]).reset_index(drop=True)
         for s in ['Produced', 'Consumed']:
             dfs1 = dfs1.merge(sectors, how='left', left_on=[f'Sector{s}By'],
-                              right_on=f'NAICS_{str(i)}')
+                              right_on=f'NAICS_{str(i)}').drop(
+                columns=f'NAICS_{str(i)}')
             dfs1 = dfs1.rename(
-                columns={f'NAICS_{str(i)}': f'Sector{s}By_tmp',
-                         f'NAICS_{str(i+1)}': f'S{s}B'})
-        # drop any rows there there isn't a sector at a greater length
+                columns={f'NAICS_{str(i+1)}': f'Sector{s}By_tmp'})
+        # drop any rows where there isn't a sector at a greater length
         dfs1 = dfs1.dropna(
-            subset=['SProducedB', 'SConsumedB'], how='all').drop(columns=[
-            'SProducedB', 'SConsumedB']).reset_index(drop=True)
+            subset=['SectorProducedBy_tmp', 'SectorConsumedBy_tmp'],
+            how='all')
 
         # subset df by length of i+1 and create temporary sector columns
         dfs2 = subset_df_by_sector_lengths(df, [i+1]).reset_index(drop=True)
