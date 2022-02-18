@@ -147,7 +147,7 @@ def disaggregate_iwms_to_6_digit_naics_for_water_withdrawal(df, attr, method,
     df = disaggregate_pastureland(df, attr, method, years, sector_column,
                                   download_FBA_if_missing=kwargs[
                                       'download_FBA_if_missing'],
-                                  parameter_drop=['1125'])
+                                  drop_sectors=['1125'])
     df = disaggregate_cropland(df, attr, method, years, sector_column,
                                download_FBA_if_missing=kwargs['download_FBA_if_missing'])
 
