@@ -483,7 +483,7 @@ def fba_proportional_disaggregation(primary_df, primary_config, secondary_df,
     # drop the sector columns in df subset that needs further disaggregation
     df1 = dfs.drop(columns=['SectorProducedBy', 'ProducedBySectorType',
                             'SectorConsumedBy', 'ConsumedBySectorType',
-                            'SectorSourceName'])
+                            'SectorSourceName', 'HelperFlow'])
     # remap to sectors, this time assume activity is aggregated
     df2 = add_sectors_to_flowbyactivity(
         df1, sectorsourcename=method['target_sector_source'],
