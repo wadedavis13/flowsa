@@ -7,6 +7,7 @@ Functions to allocate data using additional data sources
 
 import numpy as np
 import pandas as pd
+import re
 from flowsa.common import US_FIPS, fba_mapped_wsec_default_grouping_fields, \
     check_activities_sector_like, return_bea_codes_used_as_naics, \
     load_crosswalk, fbs_activity_fields
@@ -278,6 +279,12 @@ def dataset_allocation_method(flow_subset_mapped, attr, names, method,
 def allocate_source_w_secondary_source(primary_df, primary_config,
                                        secondary_df, secondary_config,
                                        allocation_method, method):
+
+    # first strip any "_XX" that might exist at the end of the method if a
+    # dataset is modified using the same method for different subsets of
+    # data. For example, the FBS method file might contain instructions for
+    # "proportional_allocation_1" and "proportional_allocation_2"
+    allocation_method = re.sub(r'_\d+$', '', allocation_method)
 
     # determine sector column with values
     sector_col = return_primary_sector_column(primary_df)
