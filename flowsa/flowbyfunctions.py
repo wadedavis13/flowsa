@@ -11,12 +11,15 @@ from esupy.dqi import get_weighted_average
 import flowsa
 from flowsa.common import fbs_activity_fields, US_FIPS, get_state_FIPS, \
     get_county_FIPS, update_geoscale, load_sector_length_cw_melt, \
+from flowsa.common import fbs_activity_fields, \
     load_crosswalk, fbs_fill_na_dict, \
-    fbs_collapsed_default_grouping_fields, \
-    fbs_collapsed_fill_na_dict, fba_activity_fields, \
-    fips_number_key, fba_fill_na_dict, check_activities_sector_like, \
-    fba_mapped_default_grouping_fields, fba_default_grouping_fields, \
-    fba_wsec_default_grouping_fields, get_flowsa_base_name
+    fbs_collapsed_default_grouping_fields, fbs_collapsed_fill_na_dict, \
+    fba_activity_fields, fba_default_grouping_fields, \
+    load_sector_length_cw_melt, fba_fill_na_dict, \
+    get_flowsa_base_name, fba_mapped_default_grouping_fields, \
+    check_activities_sector_like
+from flowsa.location import US_FIPS, get_state_FIPS, \
+    get_county_FIPS, update_geoscale, fips_number_key
 from flowsa.schema import flow_by_activity_fields, flow_by_sector_fields, \
     flow_by_sector_collapsed_fields, flow_by_activity_mapped_fields
 from flowsa.settings import datasourcescriptspath, log
@@ -185,7 +188,6 @@ def sector_aggregation(df_load):
     sums the less aggregated sector
     :param df_load: Either a flowbyactivity df with sectors or
        a flowbysector df
-    :param group_cols: columns by which to aggregate
     :return: df, with aggregated sector values
     """
     # ensure None values are not strings
@@ -209,6 +211,10 @@ def sector_aggregation(df_load):
         group_cols = [e for e in group_cols if e not in
                       ('ActivityProducedBy', 'ActivityConsumedBy')]
         df = df[df_cols]
+        df = df.reset_index(drop=True)
+
+    # load naics length crosswwalk
+    cw_load = load_crosswalk('sector_length')
 
     # load naics length crosswwalk
     cw_load = load_crosswalk('sector_length')
@@ -287,6 +293,7 @@ def sector_disaggregation(df_load):
     # add back in
     if sector_like_activities:
         df = df.drop(columns=['ActivityProducedBy', 'ActivityConsumedBy'])
+        df = df.reset_index(drop=True)
 
     # load naics 2 to naics 6 crosswalk
     cw_load = load_crosswalk('sector_length')
@@ -299,7 +306,6 @@ def sector_disaggregation(df_load):
         # aggregated naics in the df
         dfm2 = dfm.query('_merge=="left_only"').drop(
             columns=['_merge', 'SPB_tmp', 'SCB_tmp'])
-
         sector_merge = 'NAICS_' + str(i)
         sector_add = 'NAICS_' + str(i + 1)
 
@@ -322,6 +328,7 @@ def sector_disaggregation(df_load):
             dfm2 = dfm2.drop(columns=[sector_merge, sector_add])
         dfm3 = dfm2.dropna(subset=['SectorProducedBy', 'SectorConsumedBy'],
                            how='all')
+        dfm3 = dfm3.reset_index(drop=True)
         dfm3 = replace_NoneType_with_empty_cells(dfm3)
         df = pd.concat([df, dfm3], ignore_index=True)
 
@@ -658,7 +665,7 @@ def equally_allocate_suppressed_parent_to_child_naics(
         indicator=True).query('_merge=="left_only"').drop('_merge', axis=1)
     dfm = replace_NoneType_with_empty_cells(dfm)
     dfm = dfm.fillna(0)
-    df = pd.concat([df, dfm], sort=True, ignore_index=True)
+    df = pd.concat([df, dfm], ignore_index=True)
     # add length column and subset the data
     # subtract out existing data at NAICS6 from total data
     # at a length where no suppressed data
@@ -828,7 +835,6 @@ def load_fba_w_standardized_units(datasource, year, **kwargs):
 
 def subset_df_by_sector_lengths(df_load, sector_length_list):
     """
-
     :param df_load:
     :param sector_length_list: list (int) of the naics sector lengths that
     should be subset
@@ -846,7 +852,6 @@ def subset_df_by_sector_lengths(df_load, sector_length_list):
 
 def subset_df_by_sector_list(df_load, sector_list):
     """
-
     :param df_load:
     :param sector_list:
     :return:
@@ -902,6 +907,6 @@ def subset_and_merge_df_by_sector_lengths(df, length1, length2):
                                           'SectorConsumedBy'],
                     right_on=merge_cols + ['SPB_tmp', 'SCB_tmp'],
                     indicator=True)
-    dfm = replace_strings_with_NoneType(dfm)
+    dfm = replace_NoneType_with_empty_cells(dfm)
 
     return dfm

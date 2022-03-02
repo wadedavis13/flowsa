@@ -53,7 +53,6 @@ def update_naics_crosswalk():
     """
     update the useeior crosswalk with crosswalks created for
     flowsa datasets - want to add any NAICS > 6 digits
-
     Add NAICS 2002
     :return: df of NAICS that include any unofficial NAICS
     """
@@ -184,7 +183,7 @@ def write_naics_2012_crosswalk():
         d[k].rename(columns=({'NAICS_2012_Code': k}), inplace=True)
 
     naics_cw = d['NAICS_2']
-    for l in range(3, max_naics_length):
+    for l in range(3, max_naics_length+1):
         naics_cw = (d[f'NAICS_{l}'].assign(temp=d[f'NAICS_{l}'][
             f'NAICS_{l}'].str.extract(
             pat=f"({'|'.join(naics_cw[f'NAICS_{l-1}'])})")).merge(

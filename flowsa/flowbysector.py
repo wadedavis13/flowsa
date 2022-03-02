@@ -22,17 +22,21 @@ you need functions to clean up the FBA
 
 import argparse
 import pandas as pd
+import os
 from esupy.processed_data_mgmt import write_df_to_file
 import flowsa
-from flowsa.common import fips_number_key, check_activities_sector_like, \
+from flowsa.location import fips_number_key, merge_urb_cnty_pct
+from flowsa.common import load_yaml_dict, check_activities_sector_like, \
     str2bool, fba_activity_fields, rename_log_file, \
     fbs_activity_fields, fba_fill_na_dict, fbs_fill_na_dict, \
     fbs_default_grouping_fields, fbs_grouping_fields_w_activities, \
-    logoutputpath, load_yaml_dict
+    logoutputpath, load_yaml_dict, datapath
 from flowsa.schema import flow_by_activity_fields, flow_by_sector_fields, \
     flow_by_sector_fields_w_activity
 from flowsa.settings import log, vLog, paths, \
     flowbysectoractivitysetspath
+from flowsa.settings import log, vLog, \
+    flowbysectoractivitysetspath, paths
 from flowsa.metadata import set_fb_meta, write_metadata
 from flowsa.fbs_allocation import direct_allocation_method, \
     function_allocation_method, dataset_allocation_method
@@ -59,6 +63,10 @@ def parse_args():
     ap.add_argument("-m", "--method", required=True,
                     help="Method for flow by sector file. A valid method "
                          "config file must exist with this name.")
+    ap.add_argument("-c", "--fbsconfigpath",
+                    type=str2bool, required=False,
+                    help="Option to specify where to find the FBS method "
+                         "yaml.")
     ap.add_argument("-d", "--download_FBAs_if_missing",
                     type=str2bool, required=False,
                     help="Option to download any FBAs not saved locally "
@@ -107,6 +115,33 @@ def load_source_dataframe(sourcename, source_dict, download_FBA_if_missing):
     return flows_df
 
 
+def return_activity_set_names(v, fbsconfigpath):
+    """
+    Return activity set names, if there is a file. If the fbsconfigpath is not
+    None, meaning the method yaml is loaded from outside the flowsa repo,
+    first check for an activity set file in the fbsconfigpath.
+    :param v:
+    :param fbsconfigpath:
+    :return:
+    """
+    # if activity_sets are specified in a file, call them here
+    if 'activity_set_file' in v:
+        aspath = flowbysectoractivitysetspath
+        # first check if the activity set file exists in the fbsconfigpath
+        if os.path.isfile(f"{fbsconfigpath}flowbysectoractivitysets/"
+                          f"{v['activity_set_file']}"):
+            # if the file exists, reset the activitysetpath
+            aspath = f"{fbsconfigpath}flowbysectoractivitysets/"
+            log.info('Loading activity set file from %s', aspath)
+        # load activity set
+        aset_names = pd.read_csv(f"{aspath}{v['activity_set_file']}",
+                                 dtype=str)
+    else:
+        aset_names = None
+
+    return aset_names
+
+
 def main(**kwargs):
     """
     Creates a flowbysector dataset
@@ -119,11 +154,13 @@ def main(**kwargs):
         kwargs = parse_args()
 
     method_name = kwargs['method']
+    fbsconfigpath = kwargs.get('fbsconfigpath')
     download_FBA_if_missing = kwargs.get('download_FBAs_if_missing')
     # assign arguments
     vLog.info("Initiating flowbysector creation for %s", method_name)
     # call on method
-    method = load_yaml_dict(method_name, flowbytype='FBS')
+    method = load_yaml_dict(method_name, flowbytype='FBS',
+                            filepath=fbsconfigpath)
     # create dictionary of data and allocation datasets
     fb = method['source_names']
     # Create empty list for storing fbs files
@@ -137,6 +174,12 @@ def main(**kwargs):
             # ensure correct datatypes and that all fields exist
             flows = clean_df(flows, flow_by_activity_fields,
                              fba_fill_na_dict, drop_description=False)
+
+            # split data by urban and rural
+            if v.get('apply_urban_rural'):
+                vLog.info(f"Splitting {k} into urban and rural quantities "
+                          "by FIPS.")
+                flows = merge_urb_cnty_pct(flows)
 
             # clean up fba before mapping, if specified in yaml
             if "clean_fba_before_mapping_df_fxn" in primary_config:
@@ -158,12 +201,7 @@ def main(**kwargs):
                     primary_config["clean_fba_fxn"])(flows_mapped)
 
             # if activity_sets are specified in a file, call them here
-            if 'activity_set_file' in primary_config:
-                aset_names = pd.read_csv(
-                    f"{flowbysectoractivitysetspath}"
-                    f"{primary_config['activity_set_file']}", dtype=str)
-            else:
-                aset_names = None
+            aset_names = return_activity_set_names(primary_config, fbsconfigpath)
 
             # master list of activity names read in from data source
             ml_act = []
@@ -243,7 +281,8 @@ def main(**kwargs):
                 flows_subset_wsec = add_sectors_to_flowbyactivity(
                     flows_subset_geo,
                     sectorsourcename=method['target_sector_source'],
-                    allocationmethod=attr['allocation_method'])
+                    allocationmethod=attr['allocation_method'],
+                    fbsconfigpath=fbsconfigpath)
                 # clean up fba with sectors, if specified in yaml
                 if "clean_fba_w_sec_fxn" in primary_config:
                     vLog.info("Cleaning up %s FlowByActivity with sectors",
@@ -270,7 +309,7 @@ def main(**kwargs):
                     fbs = dataset_allocation_method(
                         flows_subset_wsec, attr, names, method,
                         primary_source, primary_config, aset, aset_names,
-                        download_FBA_if_missing)
+                        download_FBA_if_missing, fbsconfigpath)
 
                 # rename SourceName to MetaSources and drop columns
                 fbs = fbs.rename(
@@ -320,7 +359,7 @@ def main(**kwargs):
                           'parent NAICS that were dropped in the subset to '
                           '%s child NAICS', method['target_sector_level'])
                 fbs_agg_2 = equally_allocate_parent_to_child_naics(
-                    fbs_agg, method['target_sector_level'])
+                    fbs_agg, method)
 
                 # compare flowbysector with flowbyactivity
                 compare_activity_to_sector_flowamounts(

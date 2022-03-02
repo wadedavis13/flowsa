@@ -10,7 +10,8 @@ Water Management Survey data
 import json
 import pandas as pd
 import numpy as np
-from flowsa.common import US_FIPS, WITHDRAWN_KEYWORD
+from flowsa.location import US_FIPS
+from flowsa.common import WITHDRAWN_KEYWORD
 from flowsa.flowbyfunctions import assign_fips_location_system, \
     sector_disaggregation
 from flowsa.data_source_scripts.USDA_CoA_Cropland_NAICS import \

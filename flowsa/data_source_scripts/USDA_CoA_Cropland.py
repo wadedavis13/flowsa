@@ -9,7 +9,8 @@ Functions used to import and parse USDA Census of Ag Cropland data
 import json
 import numpy as np
 import pandas as pd
-from flowsa.common import US_FIPS, abbrev_us_state, WITHDRAWN_KEYWORD
+from flowsa.location import US_FIPS, abbrev_us_state
+from flowsa.common import WITHDRAWN_KEYWORD
 from flowsa.data_source_scripts.USDA_CoA_Cropland_NAICS import \
     disaggregate_pastureland, disaggregate_cropland
 from flowsa.flowbyfunctions import assign_fips_location_system
