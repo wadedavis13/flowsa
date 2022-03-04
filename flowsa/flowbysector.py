@@ -176,9 +176,9 @@ def main(**kwargs):
                              fba_fill_na_dict, drop_description=False)
 
             # split data by urban and rural
-            if v.get('apply_urban_rural'):
-                vLog.info(f"Splitting {k} into urban and rural quantities "
-                          "by FIPS.")
+            if primary_config.get('apply_urban_rural'):
+                vLog.info(f"Splitting {primary_source} into urban and rural "
+                          f"quantities by FIPS.")
                 flows = merge_urb_cnty_pct(flows)
 
             # clean up fba before mapping, if specified in yaml

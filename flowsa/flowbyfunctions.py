@@ -214,9 +214,6 @@ def sector_aggregation(df_load):
     # load naics length crosswwalk
     cw_load = load_crosswalk('sector_length')
 
-    # load naics length crosswwalk
-    cw_load = load_crosswalk('sector_length')
-
     # find the longest length sector
     length = df[[fbs_activity_fields[0], fbs_activity_fields[1]]].apply(
         lambda x: x.str.len()).max().max()
