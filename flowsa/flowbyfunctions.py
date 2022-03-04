@@ -905,3 +905,19 @@ def subset_and_merge_df_by_sector_lengths(df, length1, length2):
     dfm = replace_NoneType_with_empty_cells(dfm)
 
     return dfm
+
+
+def assign_sector_length_col(df_load, sectorcol):
+    """
+    Add a column for the sector length for a sector column
+    :param df_load: df to which to add a sector length column
+    :param sectorcol: string, 'SectorProducedBy' or 'SectorConsumedBy'
+    :return: df with additional col of sector length
+    """
+    # subset the df by naics length
+    cw_load = load_sector_length_cw_melt()
+
+    df = df_load.merge(cw_load, how='left', left_on=sectorcol,
+                       right_on='Sector').drop(columns='Sector')
+
+    return df
