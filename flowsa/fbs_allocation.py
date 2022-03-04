@@ -23,7 +23,7 @@ from flowsa.flowbyfunctions import collapse_activity_fields, \
     dynamically_import_fxn, sector_aggregation, sector_disaggregation, \
     subset_df_by_geoscale, return_primary_sector_column, \
     load_fba_w_standardized_units, aggregator, \
-    subset_df_by_sector_lengths
+    subset_df_by_sector_lengths, subset_and_merge_df_by_sector_lengths
 from flowsa.allocation import equal_allocation, \
     proportional_allocation_by_location_and_activity, \
     equally_allocate_parent_to_child_naics
