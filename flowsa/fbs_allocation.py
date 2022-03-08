@@ -143,7 +143,8 @@ def load_clean_allocation_fba(df_to_modify, alloc_method, alloc_config,
              alloc_config['allocation_source'], primary_source)
     fba_allocation_wsec_sub = get_fba_allocation_subset(
         fba_allocation_wsec2, primary_source, names,
-        flowSubsetMapped=df_to_modify, allocMethod=alloc_method)
+        sectorconfig=primary_config, flowSubsetMapped=df_to_modify,
+        allocMethod=alloc_method)
     fba_allocation_wsec_sub2 = sector_disaggregation(fba_allocation_wsec_sub)
 
     # if the method calls for certain parameters in the allocation df to be
@@ -604,9 +605,14 @@ def load_map_clean_fba(method, attr, fba_sourcename, df_year, flowclass,
     fba = fba.reset_index(drop=True)
 
     # assign sector to allocation dataset
+    activity_to_sector_mapping = attr.get('activity_to_sector_mapping')
+    if 'activity_to_sector_mapping' in kwargs:
+        activity_to_sector_mapping = kwargs.get('activity_to_sector_mapping')
     log.info("Adding sectors to %s", fba_sourcename)
     fba_wsec = add_sectors_to_flowbyactivity(fba, sectorsourcename=method[
-        'target_sector_source'], fbsconfigpath=fbsconfigpath)
+        'target_sector_source'],
+        activity_to_sector_mapping=activity_to_sector_mapping,
+        fbsconfigpath=fbsconfigpath)
 
     # call on fxn to further clean up/disaggregate the fba
     # allocation data, if exists

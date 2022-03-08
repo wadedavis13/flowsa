@@ -606,7 +606,7 @@ def check_golf_and_crop_irrigation_totals(df_load):
     df_m4 = df_m4.drop(columns='cropdesc')
 
     if len(df_m3) != 0:
-        df_w_missing_crop = df_load.append(df_m4, sort=True, ignore_index=True)
+        df_w_missing_crop = pd.concat([df_load, df_m4], ignore_index=True)
         return df_w_missing_crop
     else:
         return df_load

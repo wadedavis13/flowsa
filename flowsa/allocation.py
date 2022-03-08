@@ -294,7 +294,7 @@ def equally_allocate_parent_to_child_naics(df_load, method):
                                  'represented in current data subset: '
                                  '{}'.format(' '.join(map(str, rl_list))),
                                  str(i))
-            rows_lost = rows_lost.append(rl, ignore_index=True)
+            rows_lost = pd.concat([rows_lost, rl], ignore_index=True)
 
     if len(rows_lost) != 0:
         vLogDetailed.info('Allocating FlowAmounts equally to '
