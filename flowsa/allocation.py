@@ -9,6 +9,8 @@ import pandas as pd
 from flowsa.settings import log
 from flowsa.common import fbs_activity_fields, sector_level_key, \
     load_crosswalk, load_sector_length_cw_melt
+from flowsa.common import fbs_activity_fields, sector_level_key, \
+    load_crosswalk, check_activities_sector_like
 from flowsa.settings import vLogDetailed
 from flowsa.dataclean import replace_NoneType_with_empty_cells, \
     replace_strings_with_NoneType
@@ -130,8 +132,10 @@ def proportional_allocation(df, attr):
         denom_subset_cols = ['Location', 'LocationSystem', 'Year',
                              'Denominator']
 
-    denom_df = df.loc[(df['SectorProducedBy'].apply(lambda x: len(x) == 2)) |
-                      (df['SectorConsumedBy'].apply(lambda x: len(x) == 2))]
+    cw_load = load_crosswalk('sector_length')
+    cw = cw_load['NAICS_2'].drop_duplicates()
+    denom_df = df.loc[(df['SectorProducedBy'].isin(cw)) |
+                      (df['SectorConsumedBy'].isin(cw))]
 
     # generate denominator based on identified groupby cols
     denom_df = denom_df.assign(Denominator=denom_df.groupby(
@@ -247,12 +251,26 @@ def equally_allocate_parent_to_child_naics(df_load, method):
     # exclude nonsectors
     df = replace_NoneType_with_empty_cells(df_load)
 
+    # determine if activities are sector-like, if aggregating a df with a
+    # 'SourceName'
+    sector_like_activities = False
+    if 'SourceName' in df_load.columns:
+        s = pd.unique(df_load['SourceName'])[0]
+        sector_like_activities = check_activities_sector_like(s)
+
+    # if activities are source like, drop from df,
+    # add back in as copies of sector columns columns to keep
+    if sector_like_activities:
+        # subset df
+        df_cols = [e for e in df.columns if e not in
+                   ('ActivityProducedBy', 'ActivityConsumedBy')]
+        df = df[df_cols]
+
     rows_lost = pd.DataFrame()
     for i in range(2, sector_level_key[sector_level]):
-        dfm = subset_and_merge_df_by_sector_lengths(df_load, i, i+1)
-
+        dfm = subset_and_merge_df_by_sector_lengths(df, i, i+1)
         # extract the rows that are not disaggregated to more
-        # specific naics
+        # specific sectors
         rl = dfm.query('_merge=="left_only"').drop(
             columns=['_merge', 'SPB_tmp', 'SCB_tmp'])
         rl_list = rl[['SectorProducedBy', 'SectorConsumedBy']]\
@@ -300,9 +318,18 @@ def equally_allocate_parent_to_child_naics(df_load, method):
         vLogDetailed.info('Allocating FlowAmounts equally to '
                           'each %s associated with the sectors previously '
                           'dropped', sector_level)
+        # if activities are source-like, set col values as copies
+        # of the sector columns
+        if sector_like_activities:
+            rows_lost = rows_lost.assign(ActivityProducedBy=
+                                         rows_lost['SectorProducedBy'])
+            rows_lost = rows_lost.assign(ActivityConsumedBy=
+                                         rows_lost['SectorConsumedBy'])
+        # reindex columns
+        rows_lost = rows_lost.reindex(df_load.columns, axis=1)
 
     # add rows of missing data to the fbs sector subset
-    df_w_lost_data = pd.concat([df, rows_lost], ignore_index=True, sort=True)
+    df_w_lost_data = pd.concat([df_load, rows_lost], ignore_index=True)
     df_w_lost_data = replace_strings_with_NoneType(df_w_lost_data)
 
     return df_w_lost_data
@@ -316,6 +343,16 @@ def equal_allocation(fba_load):
     :param fba_load: df, FBA with activity columns mapped to sectors
     :return: df, with FlowAmount equally allocated to all mapped sectors
     """
+    from flowsa.flowbyfunctions import assign_column_of_sector_levels, \
+        return_primary_sector_column
+    # first check that all sector lengths are the same
+    sec_column = return_primary_sector_column(fba_load)
+    dfc = assign_column_of_sector_levels(fba_load, sec_column)
+    sec_lengths = dfc['SectorLength'].drop_duplicates().values.tolist()
+    if len(sec_lengths) > 1:
+        log.error('Cannot equally allocate because sector lengths vary. All '
+                  'sectors must be the same sector level.')
+
     # create groupby cols by which to determine allocation
     fba_cols = fba_load.select_dtypes([object]).columns.to_list()
     groupcols = [e for e in fba_cols if e not in

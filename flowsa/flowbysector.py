@@ -49,6 +49,8 @@ from flowsa.dataclean import clean_df, harmonize_FBS_columns, \
     reset_fbs_dq_scores
 from flowsa.validation import compare_activity_to_sector_flowamounts, \
     compare_fba_geo_subset_and_fbs_output_totals, compare_geographic_totals,\
+    replace_naics_w_naics_from_another_year, \
+    calculate_flowamount_diff_between_dfs, check_for_negative_flowamounts, \
     replace_naics_w_naics_from_another_year, check_for_negative_flowamounts, \
     calculate_flowamount_diff_between_dfs
 from flowsa.allocation import equally_allocate_parent_to_child_naics
@@ -236,8 +238,8 @@ def main(**kwargs):
 
                 # subset by flowname if exists
                 if 'source_flows' in attr:
-                    flows_subset = flows_subset[
-                        flows_subset['FlowName'].isin(attr['source_flows'])]
+                    flows_subset = flows_subset[flows_subset['FlowName']
+                                                .isin(attr['source_flows'])]
                 if len(flows_subset) == 0:
                     log.warning(f"no data found for flows in {aset}")
                     continue

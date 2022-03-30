@@ -16,13 +16,13 @@ from flowsa.common import fbs_activity_fields, \
     load_sector_length_cw_melt, fba_fill_na_dict, \
     get_flowsa_base_name, fba_mapped_default_grouping_fields, \
     check_activities_sector_like
+from flowsa.dataclean import clean_df, replace_strings_with_NoneType, \
+    replace_NoneType_with_empty_cells, standardize_units
 from flowsa.location import US_FIPS, get_state_FIPS, \
     get_county_FIPS, update_geoscale, fips_number_key
 from flowsa.schema import flow_by_activity_fields, flow_by_sector_fields, \
     flow_by_sector_collapsed_fields, flow_by_activity_mapped_fields
-from flowsa.settings import datasourcescriptspath, log
-from flowsa.dataclean import clean_df, replace_strings_with_NoneType, \
-    replace_NoneType_with_empty_cells, standardize_units
+from flowsa.settings import datasourcescriptspath, log, vLogDetailed
 
 
 def create_geoscale_list(df, geoscale, year='2015'):
@@ -156,14 +156,13 @@ def sector_ratios(df, sectorcolumn):
     # appends missing naics levels to df
     sec_ratios = []
     for i in range(length, 3, -1):
-        # subset df to sectors with length = i and length = i + 1
-        df_subset = df.loc[df[sectorcolumn].apply(lambda x: len(x) == i)]
+        # subset df to sectors with length = i
+        df_subset = subset_df_by_sector_lengths(df, [i])
         # create column for sector grouping
-        df_subset = df_subset.assign(
-            Sector_group=df_subset[sectorcolumn].apply(lambda x: x[0:i-1]))
+        df_subset = assign_sector_match_column(df_subset, sectorcolumn, i, i-1)
         # subset df to create denominator
-        df_denom = df_subset[['FlowAmount', 'Location', 'Sector_group']]
-        df_denom = df_denom.groupby(['Location', 'Sector_group'],
+        df_denom = df_subset[['FlowAmount', 'Location', 'sector_group']]
+        df_denom = df_denom.groupby(['Location', 'sector_group'],
                                     as_index=False).agg({"FlowAmount": sum})
         df_denom = df_denom.rename(columns={"FlowAmount": "Denominator"})
         # merge the denominator column with fba_w_sector df
@@ -172,10 +171,10 @@ def sector_ratios(df, sectorcolumn):
         ratio_df.loc[:, 'FlowAmountRatio'] = \
             ratio_df['FlowAmount'] / ratio_df['Denominator']
         ratio_df = ratio_df.drop(
-            columns=['Denominator', 'Sector_group']).reset_index()
+            columns=['Denominator', 'sector_group'])
         sec_ratios.append(ratio_df)
     # concat list of dataframes (info on each page)
-    df_w_ratios = pd.concat(sec_ratios, sort=True).reset_index(drop=True)
+    df_w_ratios = pd.concat(sec_ratios, ignore_index=True)
 
     return df_w_ratios
 
@@ -305,9 +304,7 @@ def sector_disaggregation(df_load):
         sector_add = 'NAICS_' + str(i + 1)
 
         # subset the df by naics length
-        cw = cw_load[[sector_merge, sector_add]]
-        # first drop all duplicates
-        cw = cw.drop_duplicates()
+        cw = cw_load[[sector_merge, sector_add]].drop_duplicates()
         # only keep the rows where there is only one value in sector_add for
         # a value in sector_merge
         cw = cw.drop_duplicates(subset=[sector_merge], keep=False).reset_index(
@@ -607,16 +604,31 @@ def dataframe_difference(df1, df2, which=None):
 
 
 def equally_allocate_suppressed_parent_to_child_naics(
-        df_load, sector_column, groupcols):
+        df_load, method, sector_column, groupcols):
     """
     Estimate data suppression, by equally allocating parent NAICS
     values to child NAICS
     :param df_load: df with sector columns
+    :param method: dictionary, FBS method yaml
     :param sector_column: str, column to estimate suppressed data for
     :param groupcols: list, columns to group df by
     :return: df, with estimated suppressed data
     """
+    from flowsa.allocation import equally_allocate_parent_to_child_naics
+    from flowsa.validation import \
+        compare_child_to_parent_sectors_flowamounts, \
+        compare_summation_at_sector_lengths_between_two_dfs
+
+    vLogDetailed.info('Estimating suppressed data by equally allocating '
+                      'parent to child sectors.')
     df = sector_disaggregation(df_load)
+
+    # equally allocate parent to child naics where child naics are not
+    # included in the dataset
+    vLogDetailed.info('Before estimating suppressed data, equally allocate '
+                      'parent sectors to child sectors.')
+    df = equally_allocate_parent_to_child_naics(df, method)
+
     df = replace_NoneType_with_empty_cells(df)
     df = df[df[sector_column] != '']
 
@@ -641,7 +653,10 @@ def equally_allocate_suppressed_parent_to_child_naics(
 
     # load naics 2 to naics 6 crosswalk
     cw_load = load_crosswalk('sector_length')
-    cw_melt = cw_load.melt(
+    # only keep official naics
+    cw = cw_load.drop(columns=['NAICS_7'])
+    cw = cw.drop_duplicates()
+    cw_melt = cw.melt(
         id_vars=["NAICS_6"], var_name="NAICS_Length",
         value_name="NAICS_Match").drop(
         columns=['NAICS_Length']).drop_duplicates()
@@ -666,54 +681,103 @@ def equally_allocate_suppressed_parent_to_child_naics(
     # add length column and subset the data
     # subtract out existing data at NAICS6 from total data
     # at a length where no suppressed data
-    df = df.assign(secLength=df[sector_column].apply(lambda x: len(x)))
+    df = assign_column_of_sector_levels(df, sector_column)
+    # df with non-suppressed data only
+    dfns = df[df['FlowAmount'] != 0].reset_index(drop=True)
 
-    # add column for each state of sector length where
-    # there are no missing values
-    df_sup = df_sup.assign(
-        secLength=df_sup[sector_column].apply(lambda x: len(x)))
-    df_sup2 = (df_sup.groupby(
-        ['FlowName', 'Compartment', 'Location'])['secLength'].agg(
-        lambda x: x.min()-1).reset_index(name='secLengthsup'))
+    df_sup2 = pd.DataFrame()
+    cw_load = load_crosswalk('sector_length')
+    df_sup = df_sup.assign(SectorMatchFlow=np.nan)
+    merge_cols = list(df_sup.select_dtypes(
+        include=['object', 'int']).columns)
+    # also drop sector and description cols
+    merge_cols = [c for c in merge_cols
+                  if c not in ['SectorConsumedBy', 'SectorProducedBy',
+                               'Description']]
+    # subset the df by length i
+    dfs = subset_df_by_sector_lengths(df_sup, [6])
 
-    # merge the dfs and sub out the last sector lengths with
-    # all data for each state drop states that don't have suppressed dat
-    df1 = df.merge(df_sup2)
+    counter = 1
+    while dfs.isnull().values.any() and 6-counter > 2:
+        # subset the crosswalk by i and i-1
+        cw = cw_load[[f'NAICS_6',
+                      f'NAICS_{6-counter}']].drop_duplicates()
+        # merge df with the cw to determine which sector to look for in
+        # non-suppressed data
+        for s in ['Produced', 'Consumed']:
+            dfs = dfs.merge(cw, how='left', left_on=f'Sector{s}By',
+                            right_on=f'NAICS_6').drop(
+                columns=f'NAICS_6').rename(
+                columns={f'NAICS_{6-counter}': f'Sector{s}Match'})
+            dfs[f'Sector{s}Match'] = dfs[f'Sector{s}Match'].fillna('')
+        # merge with non suppressed data
+        dfs = dfs.merge(dfns, how='left',
+                        left_on=merge_cols + ['SectorProducedMatch',
+                                              'SectorConsumedMatch'],
+                        right_on=merge_cols + ['SectorProducedBy',
+                                               'SectorConsumedBy'])
+        dfs['SectorMatchFlow'].fillna(dfs['FlowAmount_y'], inplace=True)
+        # drop all columns from the non suppressed data
+        dfs = dfs[dfs.columns[~dfs.columns.str.endswith('_y')]]
+        dfs.columns = dfs.columns.str.replace('_x', '')
+        # subset the df into rows assigned a new value and those not
+        dfs_assigned = dfs[~dfs['SectorMatchFlow'].isnull()]
+        dfs = dfs[dfs['SectorMatchFlow'].isnull()].drop(
+            columns=['SectorProducedMatch', 'SectorConsumedMatch',
+                     'SectorLength']).reset_index(drop=True)
+        df_sup2 = pd.concat([df_sup2, dfs_assigned], ignore_index=True)
+        counter = counter + 1
 
-    df2 = df1[df1['secLength'] == 6].reset_index(drop=True)
-    # determine sector to merge on
-    df2.loc[:, 'mergeSec'] = df2.apply(
-        lambda x: x[sector_column][:x['secLengthsup']], axis=1)
+    # merge in the df where calculated how much flow has already been
+    # allocated to NAICS6
+    mergecols = [e for e in groupcols if e not in
+                 ['SectorProducedBy', 'SectorConsumedBy']]
+    mergecols = mergecols + ['SectorProducedMatch', 'SectorConsumedMatch']
+    meltcols = mergecols + ['sector_allocated']
 
-    sum_cols = [e for e in fba_default_grouping_fields if e not in
-                ['ActivityConsumedBy', 'ActivityProducedBy']]
-    sum_cols.append('mergeSec')
-    df2 = df2.assign(
-        FlowAlloc=df2.groupby(sum_cols)['FlowAmount'].transform('sum'))
-    # rename columns for the merge and define merge cols
-    df2 = df2.rename(columns={sector_column: 'NewNAICS',
-                              'mergeSec': sector_column})
-    # keep flows with 0 flow
-    df3 = df2[df2['FlowAmount'] == 0].reset_index(drop=True)
-    m_cols = groupcols + ['NewNAICS', 'FlowAlloc']
-    # merge the two dfs
-    dfe = df1.merge(df3[m_cols])
-    # add count column used to divide the unallocated flows
-    dfe = dfe.assign(
-        secCount=dfe.groupby(groupcols)['NewNAICS'].transform('count'))
-    dfe = dfe.assign(
-        newFlow=(dfe['FlowAmount'] - dfe['FlowAlloc']) / dfe['secCount'])
-    # reassign values and drop columns
-    dfe = dfe.assign(FlowAmount=dfe['newFlow'])
-    dfe[sector_column] = dfe['NewNAICS'].copy()
-    dfe = dfe.drop(columns=['NewNAICS', 'FlowAlloc', 'secCount', 'newFlow'])
+    for ii in range(5, 1, -1):
+        # subset the df by length i
+        dfs = df_sup2[df_sup2['SectorLength'] == ii]
 
-    # new df with estimated naics6
-    dfn = pd.concat([df, dfe], ignore_index=True)
-    dfn2 = dfn[dfn['FlowAmount'] != 0].reset_index(drop=True)
-    dfn2 = dfn2.drop(columns=['secLength'])
+        dfns_sub = dfns[dfns['SectorLength'] == 6].reset_index(drop=True)
+        for s in ['Produced', 'Consumed']:
+            dfns_sub = assign_sector_match_column(dfns_sub, f'Sector{s}By', 6,
+                                             ii).rename(
+                columns={'sector_group': f'Sector{s}Match'})
+            dfns_sub = dfns_sub.fillna('')
+        dfsum = dfns_sub.groupby(mergecols, as_index=False).agg(
+            {"FlowAmount": sum}).rename(columns={
+            "FlowAmount": 'sector_allocated'})
 
-    dff = sector_aggregation(dfn2)
+        df_sup3 = dfs.merge(dfsum[meltcols], on=mergecols, how='left')
+        df_sup3['sector_allocated'] = df_sup3['sector_allocated'].fillna(0)
+        # calc the remaining flow that can be allocated
+        df_sup3['FlowRemainder'] = df_sup3['SectorMatchFlow'] - \
+                                   df_sup3['sector_allocated']
+        df_sup3 = df_sup3.drop(columns=['SectorMatchFlow', 'sector_allocated'])
+        # check for negative values
+        negv = df_sup3[df_sup3['FlowRemainder'] < 0]
+        if len(negv) > 0:
+            log.warning('There are negative values when allocating suppressed '
+                        'parent data to child NAICS')
+        # add count column used to divide the unallocated flows
+        sector_column_match = sector_column.replace('By', 'Match')
+        df_sup3 = df_sup3.assign(secCount=df_sup3.groupby(mergecols)[
+            sector_column_match].transform('count'))
+        df_sup3 = df_sup3.assign(newFlow=df_sup3['FlowRemainder'] /
+                                         df_sup3['secCount'])
+        # reassign values and drop columns
+        df_sup3 = df_sup3.assign(FlowAmount=df_sup3['newFlow'])
+        df_sup3 = df_sup3.drop(columns=['SectorProducedMatch',
+                                        'SectorConsumedMatch', 'FlowRemainder',
+                                        'secCount', 'newFlow'])
+        # reset SectorLength
+        df_sup3['SectorLength'] = 6
+        # add to the df with no suppressed data
+        dfns = pd.concat([dfns, df_sup3], ignore_index=True)
+
+    dfns = dfns.drop(columns=['SectorLength'])
+    dff = sector_aggregation(dfns)
 
     # if activities are source-like, set col values as copies
     # of the sector columns
@@ -723,8 +787,14 @@ def equally_allocate_suppressed_parent_to_child_naics(
         # reindex columns
         dff = dff.reindex(df_load.columns, axis=1)
 
+    vLogDetailed.info('Checking results of allocating suppressed parent to '
+                      'child sectors. ')
+    compare_summation_at_sector_lengths_between_two_dfs(df_load, dff)
+    compare_child_to_parent_sectors_flowamounts(dff)
+
     # replace null values
     dff = replace_strings_with_NoneType(dff).reset_index(drop=True)
+
     return dff
 
 
@@ -861,7 +931,7 @@ def subset_df_by_sector_list(df_load, sector_list):
             df['SectorConsumedBy'].isin(sector_list)
     ) | (
             df['SectorProducedBy'].isin(sector_list) &
-            df['SectorConsumedBy'].isin(sector_list))]
+            df['SectorConsumedBy'].isin(sector_list))].reset_index(drop=True)
     return df
 
 
@@ -876,6 +946,7 @@ def subset_and_merge_df_by_sector_lengths(df, length1, length2):
         drop=True)
 
     # df where either sector column is length or both columns are
+    df = df.reset_index(drop=True)
     df1 = subset_df_by_sector_lengths(df, [length1])
     # second dataframe where length is length2
     df2 = subset_df_by_sector_lengths(df, [length2])
@@ -909,17 +980,34 @@ def subset_and_merge_df_by_sector_lengths(df, length1, length2):
     return dfm
 
 
-def assign_sector_length_col(df_load, sectorcol):
+def assign_column_of_sector_levels(df_load, sectorcolumn):
     """
-    Add a column for the sector length for a sector column
-    :param df_load: df to which to add a sector length column
-    :param sectorcol: string, 'SectorProducedBy' or 'SectorConsumedBy'
-    :return: df with additional col of sector length
+    Add additional column capturing the sector level in the two columns
+    :param df: df with at least on sector column
+    :param sectorcolumn: string, 'SectorProducedBy' or 'SectorConsumedBy'
+    :return: df with new column for sector length
     """
-    # subset the df by naics length
-    cw_load = load_sector_length_cw_melt()
+    # load cw with column of sector levels
+    cw = load_sector_length_cw_melt()
+    # merge df assigning sector length
+    df = df_load.merge(cw, how='left', left_on=sectorcolumn,
+                       right_on='Sector').drop(columns=['Sector'])
+    return df
 
-    df = df_load.merge(cw_load, how='left', left_on=sectorcol,
-                       right_on='Sector').drop(columns='Sector')
+
+def assign_sector_match_column(df_load, sectorcolumn, sectorlength,
+                               sectorlengthmatch):
+
+    sector = 'NAICS_' + str(sectorlength)
+    sector_add = 'NAICS_' + str(sectorlengthmatch)
+
+    cw_load = load_crosswalk("sector_length")
+    cw = cw_load[[sector, sector_add]].drop_duplicates().reset_index(
+        drop=True)
+
+    df = df_load.merge(cw, how='left', left_on=sectorcolumn,
+                       right_on=sector
+                       ).rename(columns={sector_add: 'sector_group'}
+                                ).drop(columns=sector)
 
     return df
