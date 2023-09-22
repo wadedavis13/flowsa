@@ -319,12 +319,12 @@ def main(**kwargs):
 
                 # define grouping columns dependent on sectors
                 # being activity-like or not
-                if check_activities_sector_like(fbs) is False:
-                    groupingcols = fbs_grouping_fields_w_activities
-                    groupingdict = flow_by_sector_fields_w_activity
-                else:
-                    groupingcols = fbs_default_grouping_fields
-                    groupingdict = flow_by_sector_fields
+                # if check_activities_sector_like(fbs) is False:
+                groupingcols = fbs_grouping_fields_w_activities
+                groupingdict = flow_by_sector_fields_w_activity
+                # else:
+                #     groupingcols = fbs_default_grouping_fields
+                #     groupingdict = flow_by_sector_fields
 
                 # clean df
                 fbs = clean_df(fbs, groupingdict, fbs_fill_na_dict)
@@ -374,9 +374,9 @@ def main(**kwargs):
                     fbs_agg_2, sector_list)
 
                 # drop activity columns
-                fbs_sector_subset = fbs_sector_subset.drop(
-                    ['ActivityProducedBy', 'ActivityConsumedBy'], axis=1,
-                    errors='ignore')
+                # fbs_sector_subset = fbs_sector_subset.drop(
+                #     ['ActivityProducedBy', 'ActivityConsumedBy'], axis=1,
+                #     errors='ignore')
 
                 # save comparison of FBA total to FBS total for an activity set
                 compare_fba_geo_subset_and_fbs_output_totals(
@@ -401,7 +401,7 @@ def main(**kwargs):
             # append directly to list of FBS
             log.info(f"Append {k} to FBS list")
             # ensure correct field datatypes and add any missing fields
-            flows = clean_df(flows, flow_by_sector_fields, fbs_fill_na_dict)
+            flows = clean_df(flows,  flow_by_sector_fields_w_activity, fbs_fill_na_dict)
             fbs_list.append(flows)
     # create single df of all activities
     log.info("Concat data for all activities")
@@ -409,17 +409,17 @@ def main(**kwargs):
     log.info("Clean final dataframe")
     # add missing fields, ensure correct data type,
     # add missing columns, reorder columns
-    fbss = clean_df(fbss, flow_by_sector_fields, fbs_fill_na_dict)
+    fbss = clean_df(fbss, flow_by_sector_fields_w_activity, fbs_fill_na_dict)
     # prior to aggregating, replace MetaSources string with all sources
     # that share context/flowable/sector values
     fbss = harmonize_FBS_columns(fbss)
     # aggregate df as activities might have data for
     # the same specified sector length
-    fbss = aggregator(fbss, fbs_default_grouping_fields)
+    fbss = aggregator(fbss, fbs_grouping_fields_w_activities)
     # sort df
     log.info("Sort and store dataframe")
     # ensure correct data types/order of columns
-    fbss = clean_df(fbss, flow_by_sector_fields, fbs_fill_na_dict)
+    fbss = clean_df(fbss, flow_by_sector_fields_w_activity, fbs_fill_na_dict)
     fbss = fbss.sort_values(['SectorProducedBy', 'SectorConsumedBy',
                              'Flowable', 'Context']).reset_index(drop=True)
     # check for negative flow amounts
